@@ -1,454 +1,670 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>mehrad.responds — control room</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#14151A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="mehrad.responds">
+<title>mehrad.responds — اتاق فرمان</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&family=Vazirmatn:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#14151A; --panel:#1C1E24; --panel2:#22242C; --line:#2E3039;
-    --ink:#E9E7E1; --muted:#8A8D98; --amber:#FFB454; --amber-dim:#8a6a3a;
+    --ink:#EDEBE5; --muted:#9497A1; --amber:#FFB454; --amber-dim:#8a6a3a;
     --live:#4ADE80; --danger:#F87171; --mono:'JetBrains Mono',monospace;
-    --sans:'Space Grotesk','Vazirmatn',sans-serif;
+    --fa:'Vazirmatn',sans-serif; --r:14px;
   }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--ink);font-family:var(--fa);font-size:15px;line-height:1.9}
   textarea,input,select,button{font-family:inherit;font-size:inherit;color:inherit}
   textarea,input[type=text],input[type=email],input[type=password],input[type=number],select{
-    background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;
+    background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 13px;width:100%;
+    transition:border-color .2s, box-shadow .2s;
   }
   textarea{resize:vertical;min-height:70px}
-  [dir]{unicode-bidi:plaintext}
-  input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--amber);outline-offset:1px;border-color:var(--amber)}
-  button{cursor:pointer;border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:8px 14px;color:var(--ink)}
-  button.primary{background:var(--amber);border-color:var(--amber);color:#1a1206;font-weight:700}
-  button.danger{color:var(--danger);border-color:#5a2f2f}
-  button:disabled{opacity:.5;cursor:default}
-  .wrap{max-width:1060px;margin:0 auto;padding:0 16px 80px}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(255,180,84,.15)}
+  .ltr{direction:ltr;text-align:left;font-family:var(--mono);font-size:13px}
 
-  /* transmitter bar (signature) */
-  header{position:sticky;top:0;z-index:10;background:linear-gradient(var(--bg) 82%,transparent);padding:14px 0 10px}
-  .bar{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);
-       border-radius:12px;padding:12px 16px}
-  .brand{font-weight:700;letter-spacing:.02em}
+  button{cursor:pointer;border:1px solid var(--line);background:var(--panel2);border-radius:11px;
+    padding:11px 18px;color:var(--ink);min-height:44px;
+    transition:transform .12s ease, background .2s, border-color .2s, box-shadow .2s}
+  button:hover{border-color:var(--amber-dim)}
+  button:active{transform:scale(.965)}
+  button.primary{background:var(--amber);border-color:var(--amber);color:#1a1206;font-weight:700}
+  button.primary:hover{box-shadow:0 4px 18px rgba(255,180,84,.28)}
+  button.danger{color:var(--danger);border-color:#5a2f2f}
+  button.ghost{background:transparent}
+  button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+  .wrap{max-width:1060px;margin:0 auto;padding:0 14px 90px}
+
+  header{position:sticky;top:0;z-index:10;background:linear-gradient(var(--bg) 82%,transparent);padding:12px 0 8px}
+  .bar{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
+       border-radius:var(--r);padding:12px 16px}
+  .brand{font-weight:800;font-family:var(--mono);font-size:15px;direction:ltr}
   .brand span{color:var(--amber)}
-  .status{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto}
-  .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+  .status{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-inline-start:auto;white-space:nowrap}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
   .dot.live{background:var(--live);animation:pulse 1.6s infinite}
   .dot.off{background:var(--danger)}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,.5)}50%{box-shadow:0 0 0 6px rgba(74,222,128,0)}}
-  @media (prefers-reduced-motion:reduce){.dot.live{animation:none}}
 
-  /* master switch */
   .switch{position:relative;width:52px;height:28px;flex:none}
-  .switch input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;margin:0}
-  .switch .track{position:absolute;inset:0;background:var(--panel2);border:1px solid var(--line);border-radius:999px;transition:.2s}
-  .switch .knob{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:.2s}
+  .switch input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;margin:0;z-index:2}
+  .switch .track{position:absolute;inset:0;background:var(--panel2);border:1px solid var(--line);border-radius:999px;transition:.25s}
+  .switch .knob{position:absolute;top:3px;inset-inline-start:3px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:.25s cubic-bezier(.34,1.56,.64,1)}
   .switch input:checked ~ .track{background:#2a3d2f;border-color:var(--live)}
-  .switch input:checked ~ .knob{left:27px;background:var(--live)}
-  .switch.small{width:40px;height:22px}
-  .switch.small .knob{width:16px;height:16px}
-  .switch.small input:checked ~ .knob{left:21px}
+  .switch input:checked ~ .knob{inset-inline-start:27px;background:var(--live)}
+  .switch.small{width:42px;height:24px}
+  .switch.small .knob{width:18px;height:18px}
+  .switch.small input:checked ~ .knob{inset-inline-start:21px}
 
-  nav{display:flex;gap:6px;margin:16px 0;flex-wrap:wrap}
-  nav button{border-radius:999px;padding:7px 16px;font-family:var(--mono);font-size:12.5px;background:transparent}
+  nav{display:flex;gap:6px;margin:12px 0;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  nav button{border-radius:999px;padding:9px 18px;font-size:13.5px;background:transparent;white-space:nowrap;min-height:40px}
   nav button.on{background:var(--panel);border-color:var(--amber);color:var(--amber)}
 
-  h2{font-size:17px;margin:22px 0 10px;letter-spacing:.01em}
-  h2 small{color:var(--muted);font-weight:400;font-size:13px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+  section{animation:fadeUp .3s ease}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  h2{font-size:16.5px;margin:20px 0 10px;font-weight:700}
+  h2 small{color:var(--muted);font-weight:400;font-size:12.5px;display:block}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px;transition:border-color .25s}
+  .card:hover{border-color:#3a3d47}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .grow{flex:1;min-width:180px}
-  label.f{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 5px}
-  .kw{font-family:var(--mono);font-size:13px}
-  .fired{font-family:var(--mono);font-size:11px;color:var(--amber);border:1px solid var(--amber-dim);border-radius:999px;padding:2px 10px}
-  .hint{color:var(--muted);font-size:13px;margin-top:6px}
-  .msg{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--amber);
-       border-radius:10px;padding:10px 18px;font-family:var(--mono);font-size:13px;display:none;z-index:50}
+  .grow{flex:1;min-width:150px}
+  label.f{display:block;font-size:12px;color:var(--muted);font-weight:500;margin:13px 0 6px}
+  .fired{font-family:var(--mono);font-size:11px;color:var(--amber);border:1px solid var(--amber-dim);border-radius:999px;padding:3px 11px;direction:ltr;cursor:help;white-space:nowrap}
+  .hint{color:var(--muted);font-size:12.5px;margin-top:6px}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--panel2);
+    border:1px solid var(--amber);border-radius:11px;padding:11px 20px;font-size:13.5px;z-index:60;pointer-events:none;
+    transition:opacity .25s, transform .25s;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* آمار */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;text-align:center}
+  .stat b{display:block;font-size:26px;font-weight:800;color:var(--amber)}
+  .stat span{font-size:12px;color:var(--muted)}
+  .meter{height:12px;background:var(--bg);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-top:10px}
+  .meter i{display:block;height:100%;background:linear-gradient(90deg,var(--live),var(--amber));width:0;transition:width .8s ease;border-radius:999px}
+  .bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding-top:10px}
+  .bcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%}
+  .bcol i{width:100%;max-width:44px;background:var(--amber);border-radius:6px 6px 0 0;min-height:3px;transition:height .7s ease;opacity:.9}
+  .bcol span{font-size:10.5px;color:var(--muted);direction:ltr}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;text-align:left;padding:8px;border-bottom:1px solid var(--line)}
-  td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;max-width:320px;overflow-wrap:anywhere}
-  td.mono{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
-  .tag{font-family:var(--mono);font-size:11px;border-radius:5px;padding:1px 7px;border:1px solid var(--line)}
+  th{font-size:11px;color:var(--muted);text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;max-width:300px;overflow-wrap:anywhere}
+  td.mono{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap;direction:ltr;text-align:right}
+  .tag{font-family:var(--mono);font-size:10.5px;border-radius:6px;padding:2px 8px;border:1px solid var(--line);direction:ltr;display:inline-block}
   .tag.ai{color:var(--amber);border-color:var(--amber-dim)}
   .tag.sent{color:var(--live)}
   .tag.failed{color:var(--danger)}
+  .mutebtn{padding:4px 10px;min-height:30px;font-size:12px;border-radius:8px}
 
-  .auth{max-width:400px;margin:12vh auto 0;text-align:left}
+  .postpick{border:1px solid var(--line);border-radius:10px;max-height:230px;overflow:auto;margin-top:8px;background:var(--bg);width:100%}
+  .postpick label{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13px;align-items:flex-start}
+  .postpick label:hover{background:var(--panel2)}
+  .postpick input{width:auto;margin-top:5px}
+
+  .auth{max-width:400px;margin:10vh auto 0}
   .auth .card{padding:26px}
-  .auth h1{font-size:22px;margin-bottom:4px}
-  .auth p{color:var(--muted);font-size:13.5px;margin-bottom:18px}
+  .auth h1{font-size:21px;margin-bottom:4px;font-family:var(--mono);direction:ltr;text-align:center}
+  .auth p{color:var(--muted);font-size:13.5px;margin-bottom:18px;text-align:center}
   .stack>*{margin-bottom:10px}
-  code{font-family:var(--mono);font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+  code{font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 7px;direction:ltr;display:inline-block}
   .hidden{display:none!important}
+  pre.out{font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);
+    border-radius:10px;padding:12px;min-height:56px;max-height:280px;overflow:auto;direction:ltr;text-align:left}
+
+  @media (max-width:640px){
+    body{font-size:14.5px}
+    .bar{padding:10px 12px;gap:9px}
+    .brand{font-size:13px}
+    .card{padding:13px}
+    .stat b{font-size:22px}
+    td,th{padding:7px 6px}
+    button{padding:10px 14px}
+    .fullm{width:100%}
+  }
 </style>
 </head>
 <body>
 
-<!-- ======== FIRST-RUN / LOGIN ======== -->
+<!-- ======== ورود ======== -->
 <div id="authView" class="wrap auth hidden">
   <div class="card">
     <h1>mehrad<span style="color:var(--amber)">.responds</span></h1>
-    <p id="authSub">Connect the control room to your Supabase project.</p>
+    <p id="authSub">اتاق فرمان را به پروژه Supabase وصل کنید.</p>
     <div id="cfgForm" class="stack">
-      <input type="text" id="cfgUrl" placeholder="Supabase project URL (https://xxxx.supabase.co)">
-      <input type="text" id="cfgKey" placeholder="Supabase anon public key (eyJ...)">
-      <button class="primary" style="width:100%" onclick="saveConfig()">Connect</button>
-      <div class="hint">Find both in Supabase → Project Settings → API. This is saved only in this browser.</div>
+      <input type="text" class="ltr" id="cfgUrl" placeholder="Supabase URL (https://xxxx.supabase.co)">
+      <input type="text" class="ltr" id="cfgKey" placeholder="Supabase anon key (eyJ...)">
+      <button class="primary" style="width:100%" onclick="saveConfig()">اتصال</button>
+      <div class="hint">هر دو مقدار در Supabase → Project Settings → API هستند. فقط در همین مرورگر ذخیره می‌شود.</div>
     </div>
     <div id="loginForm" class="stack hidden">
-      <input type="email" id="email" placeholder="Email" autocomplete="username">
-      <input type="password" id="password" placeholder="Password" autocomplete="current-password">
-      <button class="primary" style="width:100%" onclick="login()">Sign in</button>
-      <div class="hint">Use the user you created in Supabase → Authentication → Add user.
-        <a href="#" onclick="resetConfig();return false" style="color:var(--amber)">Change project</a></div>
+      <input type="email" class="ltr" id="email" placeholder="Email" autocomplete="username">
+      <input type="password" class="ltr" id="password" placeholder="Password" autocomplete="current-password">
+      <button class="primary" style="width:100%" onclick="login()">ورود</button>
+      <div class="hint">با کاربری که در Supabase → Authentication ساختید وارد شوید.
+        <a href="#" onclick="resetConfig();return false" style="color:var(--amber)">تغییر پروژه</a></div>
     </div>
   </div>
 </div>
 
-<!-- ======== APP ======== -->
+<!-- ======== اپ ======== -->
 <div id="appView" class="wrap hidden">
   <header>
     <div class="bar">
       <div class="brand">mehrad<span>.responds</span></div>
       <div class="status"><span class="dot" id="liveDot"></span><span id="liveText">…</span></div>
-      <label class="switch" title="Master switch — pause or resume all replies">
+      <label class="switch" title="کلید اصلی — توقف یا فعال‌سازی همه پاسخ‌ها">
         <input type="checkbox" id="masterSwitch" onchange="toggleMaster(this.checked)">
         <span class="track"></span><span class="knob"></span>
       </label>
-      <button onclick="logout()" style="font-family:var(--mono);font-size:12px">Sign out</button>
     </div>
     <nav>
-      <button id="tab-rules" class="on" onclick="showTab('rules')">Rules</button>
-      <button id="tab-brain" onclick="showTab('brain')">AI Brain</button>
-      <button id="tab-activity" onclick="showTab('activity')">Activity</button>
-      <button id="tab-setup" onclick="showTab('setup')">Setup &amp; Health</button>
+      <button id="tab-rules" class="on" onclick="showTab('rules')">قوانین</button>
+      <button id="tab-brain" onclick="showTab('brain')">مغز هوشمند</button>
+      <button id="tab-analytics" onclick="showTab('analytics')">آمار</button>
+      <button id="tab-activity" onclick="showTab('activity')">فعالیت</button>
+      <button id="tab-setup" onclick="showTab('setup')">راه‌اندازی</button>
     </nav>
   </header>
 
-  <!-- RULES -->
+  <!-- قوانین -->
   <section id="view-rules">
-    <h2>Direct message rules <small>— when a DM contains a keyword, send the reply</small></h2>
+    <h2>قوانین دایرکت <small>وقتی پیام دایرکت شامل کلمه کلیدی باشد، پاسخ ارسال می‌شود</small></h2>
     <div id="dmRules"></div>
-    <button onclick="addRule('dm')">+ Add DM rule</button>
+    <button class="fullm" onclick="addRule('dm')">+ افزودن قانون دایرکت</button>
 
-    <h2>Comment rules <small>— when a comment contains a keyword, DM the person (and optionally reply publicly)</small></h2>
+    <h2>قوانین کامنت <small>وقتی کامنت شامل کلمه کلیدی باشد، به فرد دایرکت می‌دهد (و در صورت تمایل زیر کامنت هم پاسخ می‌دهد)</small></h2>
     <div id="commentRules"></div>
-    <button onclick="addRule('comment')">+ Add comment rule</button>
+    <button class="fullm" onclick="addRule('comment')">+ افزودن قانون کامنت</button>
+    <div class="hint" style="margin-top:14px">💡 «اجرا ×N» یعنی این قانون تا حالا N بار فعال شده و پاسخ فرستاده است — شمارنده عملکرد هر قانون.</div>
   </section>
 
-  <!-- AI BRAIN -->
+  <!-- مغز هوشمند -->
   <section id="view-brain" class="hidden">
-    <h2>AI Brain <small>— the personality and knowledge of your Gemini assistant</small></h2>
+    <h2>مغز هوشمند <small>شخصیت، دانش و رفتار دستیار Gemini شما</small></h2>
     <div class="card">
       <div class="row">
         <label class="switch small"><input type="checkbox" id="aiFallback"><span class="track"></span><span class="knob"></span></label>
-        <div>Let the AI answer any DM that no rule catches</div>
+        <div style="flex:1">هوش مصنوعی به دایرکت‌هایی که هیچ قانونی نگرفته پاسخ بدهد
+        <div class="hint">خاموش = ربات فقط با کلمات کلیدی شما فعال می‌شود و به بقیه پیام‌ها کاری ندارد. برای کنترل کامل، خاموش نگهش دارید.</div></div>
       </div>
-      <label class="f">Personality &amp; instructions (system prompt)</label>
+
+      <label class="f">شخصیت و دستورالعمل‌ها (پرامپت سیستم)</label>
       <textarea id="sysPrompt" rows="6" dir="auto"></textarea>
-      <div class="hint">Who is the bot? How should it talk? Which language? What must it never do? Write it like a job description.</div>
+      <div class="hint">ربات کیست؟ چه لحنی دارد؟ به چه زبانی جواب بدهد؟ چه کاری هرگز نکند؟ مثل شرح شغل بنویسید.</div>
 
-      <label class="f">Knowledge base — everything the AI is allowed to know</label>
-      <textarea id="knowledge" rows="10" dir="auto" placeholder="Paste FAQs, product info, prices, shipping details, your bio, links…&#10;&#10;Q: How much is LATHERWORK?&#10;A: …"></textarea>
-      <div class="hint">This is how you "train" the bot: the more accurate info you paste here, the better it answers. Update it any time.</div>
+      <label class="f">پایگاه دانش — هر چیزی که ربات اجازه دارد بداند</label>
+      <textarea id="knowledge" rows="9" dir="auto" placeholder="سوال‌های پرتکرار، قیمت‌ها، لینک‌ها، معرفی محصولات…&#10;&#10;س: قیمت LATHERWORK چند است؟&#10;ج: …"></textarea>
+      <div class="hint">آموزش ربات همین‌جاست: هرچه اطلاعات دقیق‌تری اینجا بگذارید، جواب‌ها بهتر می‌شود.</div>
 
-      <div class="row" style="margin-top:14px">
+      <div class="row" style="margin-top:12px">
         <div class="grow">
-          <label class="f">Gemini model</label>
-          <select id="model">
-            <option value="gemini-2.0-flash">gemini-2.0-flash (fast, free tier)</option>
-            <option value="gemini-2.5-flash">gemini-2.5-flash (smarter)</option>
-            <option value="gemini-2.5-pro">gemini-2.5-pro (smartest, slower)</option>
+          <label class="f">مدل Gemini</label>
+          <select id="model" class="ltr">
+            <option value="gemini-2.5-flash">gemini-2.5-flash (سریع و رایگان)</option>
+            <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite (سبک‌ترین)</option>
+            <option value="gemini-2.5-pro">gemini-2.5-pro (باهوش‌ترین)</option>
           </select>
         </div>
         <div class="grow">
-          <label class="f">Creativity (temperature): <span id="tempVal">0.7</span></label>
+          <label class="f">خلاقیت: <span id="tempVal">0.7</span></label>
           <input type="range" id="temp" min="0" max="1.5" step="0.1" value="0.7"
                  oninput="document.getElementById('tempVal').textContent=this.value" style="width:100%">
         </div>
       </div>
       <div class="row">
         <div class="grow">
-          <label class="f">Conversation memory (turns remembered per person)</label>
+          <label class="f">حافظه گفتگو (تعداد رد و بدل برای هر نفر)</label>
           <input type="number" id="memTurns" min="0" max="20">
         </div>
         <div class="grow">
-          <label class="f">Max reply length (characters, IG limit 1000)</label>
+          <label class="f">حداکثر طول پاسخ (کاراکتر، سقف اینستاگرام ۱۰۰۰)</label>
           <input type="number" id="maxChars" min="50" max="1000">
         </div>
       </div>
-      <div style="margin-top:16px"><button class="primary" onclick="saveBrain()">Save AI Brain</button></div>
+    </div>
+
+    <h2>رفتار طبیعی <small>تاخیر انسانی و سقف پاسخ‌دهی</small></h2>
+    <div class="card">
+      <label class="f">تاخیر پاسخ به دایرکت (ثانیه) — کمینه و بیشینه</label>
+      <div class="row">
+        <div class="grow"><input type="number" id="delayMin" min="0" max="120" placeholder="مثلا 15"></div>
+        <div class="grow"><input type="number" id="delayMax" min="0" max="120" placeholder="مثلا 40"></div>
+      </div>
+      <label class="f">تاخیر پاسخ به کامنت (ثانیه) — کمینه و بیشینه</label>
+      <div class="row">
+        <div class="grow"><input type="number" id="cDelayMin" min="0" max="120" placeholder="مثلا 20"></div>
+        <div class="grow"><input type="number" id="cDelayMax" min="0" max="120" placeholder="مثلا 60"></div>
+      </div>
+      <div class="hint">ربات قبل از پاسخ، زمانی تصادفی در این بازه صبر می‌کند تا طبیعی به نظر برسد. هر دو صفر = پاسخ فوری. سقف ۱۲۰ ثانیه.</div>
+
+      <label class="f">سقف پاسخ در هر ساعت (سوپاپ اطمینان)</label>
+      <input type="number" id="hourlyCap" min="10" max="1000">
+      <div class="hint">اگر تعداد پاسخ‌های یک ساعت به این عدد برسد، ربات موقتا ساکت می‌شود. میزان مصرف را در تب «آمار» ببینید.</div>
+
+      <div style="margin-top:16px"><button class="primary fullm" onclick="saveBrain()">ذخیره همه تنظیمات</button></div>
     </div>
   </section>
 
-  <!-- ACTIVITY -->
+  <!-- آمار -->
+  <section id="view-analytics" class="hidden">
+    <h2>آمار <small>عملکرد ربات در یک نگاه</small></h2>
+    <div class="stats">
+      <div class="stat"><b id="stToday">–</b><span>پاسخ امروز</span></div>
+      <div class="stat"><b id="stWeek">–</b><span>پاسخ ۷ روز اخیر</span></div>
+      <div class="stat"><b id="stTotal">–</b><span>کل پاسخ‌ها</span></div>
+      <div class="stat"><b id="stAi">–</b><span>پاسخ هوش مصنوعی</span></div>
+      <div class="stat"><b id="stDm">–</b><span>دایرکت</span></div>
+      <div class="stat"><b id="stCm">–</b><span>کامنت</span></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="row" style="justify-content:space-between">
+        <strong>مصرف این ساعت</strong>
+        <span id="capText" class="ltr" style="color:var(--muted)">–</span>
+      </div>
+      <div class="meter"><i id="capBar"></i></div>
+      <div class="hint">وقتی نوار پر شود، ربات تا شروع ساعت بعد پاسخ نمی‌دهد. سقف را در «مغز هوشمند → رفتار طبیعی» تغییر دهید.</div>
+    </div>
+    <div class="card">
+      <strong>پاسخ‌های ۷ روز گذشته</strong>
+      <div class="bars" id="weekBars"></div>
+    </div>
+    <div style="text-align:center"><button onclick="loadAnalytics()">به‌روزرسانی آمار</button></div>
+  </section>
+
+  <!-- فعالیت -->
   <section id="view-activity" class="hidden">
-    <h2>Activity <small>— every message the bot saw and what it did</small></h2>
+    <h2>فعالیت <small>هر پیامی که ربات دید و کاری که کرد</small></h2>
     <div class="row" style="margin-bottom:10px">
       <select id="logFilter" onchange="loadLog()" style="width:auto">
-        <option value="">All events</option><option value="dm">DMs</option>
-        <option value="comment">Comments</option><option value="webhook">Webhook events</option>
+        <option value="">همه رویدادها</option><option value="dm">دایرکت‌ها</option>
+        <option value="comment">کامنت‌ها</option><option value="webhook">رویدادهای وب‌هوک</option>
       </select>
-      <button onclick="loadLog()">Refresh</button>
-      <span class="hint" id="logInfo"></span>
+      <button onclick="loadLog()">تازه‌سازی</button>
+      <span class="hint">هر ۲۰ ثانیه خودکار تازه می‌شود · دکمه 🔇 = ربات دیگر به آن شخص پاسخ نمی‌دهد</span>
     </div>
     <div class="card" style="padding:0;overflow-x:auto">
-      <table><thead><tr><th>Time</th><th>Kind</th><th>From</th><th>Incoming</th><th>Reply</th><th>Via</th><th>Status</th></tr></thead>
+      <table><thead><tr><th>زمان</th><th>نوع</th><th>فرستنده</th><th>پیام دریافتی</th><th>پاسخ</th><th>روش</th><th>وضعیت</th><th></th></tr></thead>
       <tbody id="logBody"></tbody></table>
+    </div>
+    <div class="card">
+      <strong>افراد بی‌صدا شده</strong> <span class="hint">ربات هرگز به این‌ها پاسخ نمی‌دهد (مثلا دوستان و خانواده)</span>
+      <div id="mutedList" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:8px">
+        <input type="text" class="ltr grow" id="muteId" placeholder="sender id (از جدول بالا)">
+        <button onclick="muteSender()">🔇 بی‌صدا کن</button>
+      </div>
     </div>
   </section>
 
-  <!-- SETUP -->
+  <!-- راه‌اندازی -->
   <section id="view-setup" class="hidden">
-    <h2>Setup &amp; Health <small>— one-click checks on your pipeline</small></h2>
+    <h2>راه‌اندازی و سلامت <small>بررسی یک‌کلیکی خط لوله</small></h2>
     <div class="card">
-      <label class="f">Your Edge Function URL</label>
-      <input type="text" id="fnUrl" placeholder="https://xxxx.supabase.co/functions/v1/mehrad-responds" onchange="saveLocal()">
-      <label class="f">Your verify token (the same secret you set as IG_VERIFY_TOKEN)</label>
-      <input type="text" id="vTok" placeholder="e.g. mehrad-responds-2049" onchange="saveLocal()">
+      <label class="f">آدرس Edge Function شما</label>
+      <input type="text" class="ltr" id="fnUrl" placeholder="https://xxxx.supabase.co/functions/v1/mehrad-responds" onchange="saveLocal()">
+      <label class="f">Verify token شما (همان IG_VERIFY_TOKEN)</label>
+      <input type="text" class="ltr" id="vTok" placeholder="mehrad-responds-xxxx" onchange="saveLocal()">
       <div class="row" style="margin-top:14px">
-        <button onclick="adminCall('status')">Check connection</button>
-        <button onclick="adminCall('subscribe')">Subscribe account to webhooks</button>
-        <button onclick="adminCall('test-gemini')">Test Gemini</button>
+        <button onclick="adminCall('status')">بررسی اتصال</button>
+        <button onclick="adminCall('subscribe')">اشتراک وب‌هوک</button>
+        <button onclick="adminCall('test-gemini')">تست Gemini</button>
       </div>
-      <label class="f">Result</label>
-      <pre id="adminOut" style="font-family:var(--mono);font-size:12px;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;min-height:60px;max-height:300px;overflow:auto">—</pre>
+      <label class="f">نتیجه</label>
+      <pre class="out" id="adminOut">—</pre>
     </div>
     <div class="card">
-      <strong>If DMs aren't triggering, check these in order</strong>
-      <ol style="margin:10px 0 0 18px;color:var(--muted);font-size:13.5px;line-height:1.9">
-        <li>Instagram app → <em>Settings → Messages and story replies → Message controls → Connected tools → Allow access to messages → ON</em></li>
-        <li>Test DMs must come from an account added as <em>Instagram Tester</em> on your Meta app (invite accepted)</li>
-        <li>Open the DM and <em>accept the message request</em> — requests don't fire webhooks</li>
-        <li>"Check connection" above must show <code>messages</code> and <code>comments</code> under subscriptions</li>
-        <li>Meta dashboard → Webhooks: fields <code>messages</code> + <code>comments</code> subscribed on the <em>Instagram</em> object</li>
-      </ol>
+      <strong>نصب روی گوشی</strong>
+      <div class="hint">این صفحه را در مرورگر گوشی باز کنید → دکمه اشتراک‌گذاری → «Add to Home Screen». مثل یک اپ واقعی با آیکون مخصوص باز می‌شود.</div>
+      <div class="row" style="margin-top:14px"><button class="ghost" onclick="logout()">خروج از حساب</button></div>
     </div>
   </section>
 </div>
 
-<div class="msg" id="toast"></div>
+<div class="toast" id="toast"></div>
 
 <script>
-let sb = null, settings = null, logTimer = null;
+let sb=null, settings=null, logTimer=null, mediaCache=null;
+const faNum = n => Number(n??0).toLocaleString('fa-IR');
 
-// ---------- boot ----------
-const cfg = { url: localStorage.getItem('mr_url'), key: localStorage.getItem('mr_key') };
+// ---------- شروع ----------
+const cfg={url:localStorage.getItem('mr_url'), key:localStorage.getItem('mr_key')};
 init();
 async function init(){
-  if(!cfg.url || !cfg.key){ show('authView'); document.getElementById('cfgForm').classList.remove('hidden'); return; }
-  sb = window.supabase.createClient(cfg.url, cfg.key);
-  const { data:{ session } } = await sb.auth.getSession();
+  if(!cfg.url||!cfg.key){ show('authView'); document.getElementById('cfgForm').classList.remove('hidden'); return; }
+  sb=window.supabase.createClient(cfg.url,cfg.key);
+  const {data:{session}}=await sb.auth.getSession();
   if(!session){ show('authView'); document.getElementById('cfgForm').classList.add('hidden');
     document.getElementById('loginForm').classList.remove('hidden');
-    document.getElementById('authSub').textContent='Sign in to your control room.'; return; }
+    document.getElementById('authSub').textContent='برای ورود به اتاق فرمان، وارد شوید.'; return; }
   await enterApp();
 }
-function show(id){ for(const v of ['authView','appView']) document.getElementById(v).classList.toggle('hidden', v!==id); }
-
+function show(id){ for(const v of ['authView','appView']) document.getElementById(v).classList.toggle('hidden',v!==id); }
 function saveConfig(){
   const u=document.getElementById('cfgUrl').value.trim().replace(/\/$/,'');
   const k=document.getElementById('cfgKey').value.trim();
-  if(!u.startsWith('https://')||!k) return toast('Paste both the project URL and the anon key');
+  if(!u.startsWith('https://')||!k) return toast('هر دو مقدار URL و anon key را وارد کنید');
   localStorage.setItem('mr_url',u); localStorage.setItem('mr_key',k); location.reload();
 }
 function resetConfig(){ localStorage.removeItem('mr_url'); localStorage.removeItem('mr_key'); location.reload(); }
-
 async function login(){
-  const { error } = await sb.auth.signInWithPassword({
+  const {error}=await sb.auth.signInWithPassword({
     email:document.getElementById('email').value.trim(),
-    password:document.getElementById('password').value });
+    password:document.getElementById('password').value});
   if(error) return toast(error.message);
   await enterApp();
 }
 async function logout(){ await sb.auth.signOut(); location.reload(); }
-
 async function enterApp(){
   show('appView');
-  document.getElementById('fnUrl').value = localStorage.getItem('mr_fn')||'';
-  document.getElementById('vTok').value  = localStorage.getItem('mr_vt')||'';
-  await loadSettings(); await loadRules(); await loadLog();
+  document.getElementById('fnUrl').value=localStorage.getItem('mr_fn')||'';
+  document.getElementById('vTok').value=localStorage.getItem('mr_vt')||'';
+  await loadSettings(); await loadRules(); loadMuted();
 }
 
-// ---------- settings / master switch ----------
+// ---------- تنظیمات و کلید اصلی ----------
 async function loadSettings(){
-  const { data, error } = await sb.from('settings').select('*').eq('id',1).single();
-  if(error) return toast('Could not load settings: '+error.message);
-  settings = data;
-  document.getElementById('masterSwitch').checked = data.bot_active;
+  const {data,error}=await sb.from('settings').select('*').eq('id',1).single();
+  if(error) return toast('خطا در بارگذاری تنظیمات: '+error.message);
+  settings=data;
+  document.getElementById('masterSwitch').checked=data.bot_active;
   setLive(data.bot_active);
-  document.getElementById('aiFallback').checked = data.ai_fallback;
-  document.getElementById('sysPrompt').value = data.system_prompt;
-  document.getElementById('knowledge').value = data.knowledge_base;
-  document.getElementById('model').value = data.gemini_model;
-  document.getElementById('temp').value = data.temperature;
-  document.getElementById('tempVal').textContent = data.temperature;
-  document.getElementById('memTurns').value = data.memory_turns;
-  document.getElementById('maxChars').value = data.max_reply_chars;
+  document.getElementById('aiFallback').checked=data.ai_fallback;
+  document.getElementById('sysPrompt').value=data.system_prompt;
+  document.getElementById('knowledge').value=data.knowledge_base;
+  document.getElementById('model').value=data.gemini_model;
+  document.getElementById('temp').value=data.temperature;
+  document.getElementById('tempVal').textContent=data.temperature;
+  document.getElementById('memTurns').value=data.memory_turns;
+  document.getElementById('maxChars').value=data.max_reply_chars;
+  document.getElementById('delayMin').value=data.reply_delay_min??0;
+  document.getElementById('delayMax').value=data.reply_delay_max??0;
+  document.getElementById('cDelayMin').value=data.comment_delay_min??0;
+  document.getElementById('cDelayMax').value=data.comment_delay_max??0;
+  document.getElementById('hourlyCap').value=data.hourly_cap??150;
 }
 function setLive(on){
-  document.getElementById('liveDot').className = 'dot '+(on?'live':'off');
-  document.getElementById('liveText').textContent = on?'BOT LIVE':'PAUSED';
+  document.getElementById('liveDot').className='dot '+(on?'live':'off');
+  document.getElementById('liveText').textContent=on?'ربات فعال':'متوقف';
 }
 async function toggleMaster(on){
-  const { error } = await sb.from('settings').update({bot_active:on, updated_at:new Date().toISOString()}).eq('id',1);
-  if(error){ toast(error.message); return; }
-  setLive(on); toast(on?'Bot resumed':'Bot paused — no replies will be sent');
+  const {error}=await sb.from('settings').update({bot_active:on,updated_at:new Date().toISOString()}).eq('id',1);
+  if(error){toast(error.message);return;}
+  setLive(on); toast(on?'ربات فعال شد':'ربات متوقف شد — هیچ پاسخی ارسال نمی‌شود');
 }
 async function saveBrain(){
-  const upd = {
-    ai_fallback: document.getElementById('aiFallback').checked,
-    system_prompt: document.getElementById('sysPrompt').value,
-    knowledge_base: document.getElementById('knowledge').value,
-    gemini_model: document.getElementById('model').value,
-    temperature: parseFloat(document.getElementById('temp').value),
-    memory_turns: parseInt(document.getElementById('memTurns').value)||6,
-    max_reply_chars: Math.min(1000, parseInt(document.getElementById('maxChars').value)||800),
-    updated_at: new Date().toISOString(),
+  const num=(id,d)=>parseInt(document.getElementById(id).value)||d;
+  const upd={
+    ai_fallback:document.getElementById('aiFallback').checked,
+    system_prompt:document.getElementById('sysPrompt').value,
+    knowledge_base:document.getElementById('knowledge').value,
+    gemini_model:document.getElementById('model').value,
+    temperature:parseFloat(document.getElementById('temp').value),
+    memory_turns:num('memTurns',6),
+    max_reply_chars:Math.min(1000,num('maxChars',800)),
+    reply_delay_min:Math.max(0,Math.min(120,parseInt(document.getElementById('delayMin').value)||0)),
+    reply_delay_max:Math.max(0,Math.min(120,parseInt(document.getElementById('delayMax').value)||0)),
+    comment_delay_min:Math.max(0,Math.min(120,parseInt(document.getElementById('cDelayMin').value)||0)),
+    comment_delay_max:Math.max(0,Math.min(120,parseInt(document.getElementById('cDelayMax').value)||0)),
+    hourly_cap:Math.max(10,num('hourlyCap',150)),
+    updated_at:new Date().toISOString(),
   };
-  const { error } = await sb.from('settings').update(upd).eq('id',1);
-  toast(error ? error.message : 'AI Brain saved');
+  const {error}=await sb.from('settings').update(upd).eq('id',1);
+  toast(error?error.message:'همه تنظیمات ذخیره شد ✓');
 }
 
-// ---------- rules ----------
+// ---------- قوانین ----------
 async function loadRules(){
-  const { data, error } = await sb.from('rules').select('*').order('created_at');
+  const {data,error}=await sb.from('rules').select('*').order('created_at');
   if(error) return toast(error.message);
-  renderRules('dm', data.filter(r=>r.kind==='dm'));
-  renderRules('comment', data.filter(r=>r.kind==='comment'));
+  renderRules('dm',data.filter(r=>r.kind==='dm'));
+  renderRules('comment',data.filter(r=>r.kind==='comment'));
 }
-function esc(s){ return (s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function esc(s){return (s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-function renderRules(kind, rules){
-  const host = document.getElementById(kind==='dm'?'dmRules':'commentRules');
-  if(!rules.length){ host.innerHTML = '<div class="card hint">No rules yet. Add one below — for example keyword <code>price</code> → your price message.</div>'; return; }
-  host.innerHTML = rules.map(r=>`
+function renderRules(kind,rules){
+  const host=document.getElementById(kind==='dm'?'dmRules':'commentRules');
+  if(!rules.length){host.innerHTML='<div class="card hint">هنوز قانونی ندارید. یکی بسازید — مثلا کلمه <code>price</code> ← پیام قیمت شما.</div>';return;}
+  host.innerHTML=rules.map(r=>`
   <div class="card" data-id="${r.id}">
     <div class="row">
       <input type="text" class="grow r-name" value="${esc(r.name)}" dir="auto">
-      <span class="fired">fired ×${r.fired}</span>
-      <label class="switch small" title="Rule on/off"><input type="checkbox" class="r-active" ${r.active?'checked':''}><span class="track"></span><span class="knob"></span></label>
+      <span class="fired" title="این قانون تا حالا ${r.fired} بار فعال شده و پاسخ فرستاده است">اجرا ×${r.fired}</span>
+      <label class="switch small" title="روشن/خاموش"><input type="checkbox" class="r-active" ${r.active?'checked':''}><span class="track"></span><span class="knob"></span></label>
     </div>
-    <label class="f">Trigger keywords (comma separated — English or فارسی)</label>
-    <input type="text" class="kw r-keywords" value="${esc(r.keywords.join(', '))}" dir="auto">
+    <label class="f">کلمات کلیدی محرک (با ویرگول جدا کنید — فارسی یا English)</label>
+    <input type="text" class="r-keywords" value="${esc(r.keywords.join(', '))}" dir="auto">
     <div class="row" style="margin-top:8px">
       <select class="r-match" style="width:auto">
-        <option value="contains" ${r.match_type==='contains'?'selected':''}>message contains keyword</option>
-        <option value="exact" ${r.match_type==='exact'?'selected':''}>message is exactly the keyword</option>
-        <option value="starts_with" ${r.match_type==='starts_with'?'selected':''}>message starts with keyword</option>
+        <option value="contains" ${r.match_type==='contains'?'selected':''}>پیام شامل کلمه باشد</option>
+        <option value="exact" ${r.match_type==='exact'?'selected':''}>پیام دقیقا خود کلمه باشد</option>
+        <option value="starts_with" ${r.match_type==='starts_with'?'selected':''}>پیام با کلمه شروع شود</option>
       </select>
-      <label class="row" style="gap:8px;font-size:13.5px">
+      <label class="row" style="gap:8px;font-size:13px">
         <label class="switch small"><input type="checkbox" class="r-useai" ${r.use_ai?'checked':''} onchange="toggleAiFields(this)"><span class="track"></span><span class="knob"></span></label>
-        Let AI write the reply
+        هوش مصنوعی پاسخ بنویسد
       </label>
     </div>
     <div class="ai-off ${r.use_ai?'hidden':''}">
-      <label class="f">Replies — one per line (a random one is sent each time)</label>
+      <label class="f">پاسخ‌ها — هر خط یک پاسخ (هر بار یکی تصادفی ارسال می‌شود)</label>
       <textarea class="r-responses" rows="3" dir="auto">${esc(r.responses.join('\n'))}</textarea>
     </div>
     <div class="ai-on ${r.use_ai?'':'hidden'}">
-      <label class="f">Extra AI instruction for this trigger (optional)</label>
-      <textarea class="r-aiinst" rows="2" dir="auto" placeholder="e.g. They asked about pricing — share prices from the knowledge base and offer the shop link.">${esc(r.ai_instruction)}</textarea>
+      <label class="f">دستور اضافه برای هوش مصنوعی (اختیاری)</label>
+      <textarea class="r-aiinst" rows="2" dir="auto" placeholder="مثلا: درباره قیمت پرسیده — از پایگاه دانش قیمت بده و لینک فروشگاه را پیشنهاد کن.">${esc(r.ai_instruction)}</textarea>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="row" style="gap:8px;font-size:13px">
+        <label class="switch small"><input type="checkbox" class="r-follow" ${r.require_follow?'checked':''} onchange="this.closest('.card').querySelector('.follow-box').classList.toggle('hidden',!this.checked)"><span class="track"></span><span class="knob"></span></label>
+        قفل فالو 🔒 — پاسخ اصلی فقط بعد از فالو کردن پیج
+      </label>
+    </div>
+    <div class="follow-box ${r.require_follow?'':'hidden'}">
+      <label class="f">پیام برای غیر فالوورها (بعد از فالو، دوباره پیام بدهند تا پاسخ اصلی را بگیرند)</label>
+      <textarea class="r-fprompt" rows="2" dir="auto">${esc(r.follow_prompt||'')}</textarea>
     </div>
     ${kind==='comment'?`
-    <label class="f">Public reply under the comment (optional — leave empty for DM only)</label>
-    <input type="text" class="r-public" value="${esc(r.public_reply)}" dir="auto" placeholder="Sent you a DM! 📩">`:''}
+    <label class="f">پاسخ عمومی زیر کامنت — هر خط یک پاسخ، تصادفی انتخاب می‌شود (خالی = فقط دایرکت)</label>
+    <textarea class="r-public" rows="2" dir="auto" placeholder="برات دایرکت کردم! 📩&#10;چک کن دایرکتتو 😊&#10;فرستادم برات 🙌">${esc(r.public_reply||'')}</textarea>
+    <label class="f">محدود به پست‌های خاص (خالی = همه پست‌ها)</label>
+    <div class="row">
+      <button type="button" onclick="openPostPicker(this)">📌 انتخاب پست‌ها <span class="r-mcount">${(r.media_ids||[]).length?`(${faNum((r.media_ids||[]).length)} پست)`:'(همه)'}</span></button>
+    </div>
+    <input type="hidden" class="r-media" value="${esc((r.media_ids||[]).join(','))}">
+    <div class="postpick hidden r-picker"></div>`:''}
     <div class="row" style="margin-top:14px">
-      <button class="primary" onclick="saveRule('${r.id}','${kind}')">Save rule</button>
-      <button class="danger" onclick="deleteRule('${r.id}')">Delete</button>
+      <button class="primary" onclick="saveRule('${r.id}','${kind}')">ذخیره قانون</button>
+      <button class="danger" onclick="deleteRule('${r.id}')">حذف</button>
     </div>
   </div>`).join('');
 }
 function toggleAiFields(el){
-  const card = el.closest('.card');
-  card.querySelector('.ai-off').classList.toggle('hidden', el.checked);
-  card.querySelector('.ai-on').classList.toggle('hidden', !el.checked);
+  const c=el.closest('.card');
+  c.querySelector('.ai-off').classList.toggle('hidden',el.checked);
+  c.querySelector('.ai-on').classList.toggle('hidden',!el.checked);
 }
 async function addRule(kind){
-  const { error } = await sb.from('rules').insert({ kind, name: kind==='dm'?'New DM rule':'New comment rule' });
+  const {error}=await sb.from('rules').insert({kind,name:kind==='dm'?'قانون دایرکت جدید':'قانون کامنت جدید'});
   if(error) return toast(error.message);
-  await loadRules(); toast('Rule added — fill it in and Save');
+  await loadRules(); toast('قانون اضافه شد — پرش کنید و ذخیره بزنید');
 }
-async function saveRule(id, kind){
-  const c = document.querySelector(`.card[data-id="${id}"]`);
-  const upd = {
-    name: c.querySelector('.r-name').value.trim()||'Untitled rule',
-    keywords: c.querySelector('.r-keywords').value.split(',').map(s=>s.trim()).filter(Boolean),
-    match_type: c.querySelector('.r-match').value,
-    use_ai: c.querySelector('.r-useai').checked,
-    responses: c.querySelector('.r-responses')?.value.split('\n').map(s=>s.trim()).filter(Boolean) ?? [],
-    ai_instruction: c.querySelector('.r-aiinst')?.value ?? '',
-    active: c.querySelector('.r-active').checked,
+async function saveRule(id,kind){
+  const c=document.querySelector(`.card[data-id="${id}"]`);
+  const upd={
+    name:c.querySelector('.r-name').value.trim()||'بدون نام',
+    keywords:c.querySelector('.r-keywords').value.split(/[,،]/).map(s=>s.trim()).filter(Boolean),
+    match_type:c.querySelector('.r-match').value,
+    use_ai:c.querySelector('.r-useai').checked,
+    responses:c.querySelector('.r-responses')?.value.split('\n').map(s=>s.trim()).filter(Boolean)??[],
+    ai_instruction:c.querySelector('.r-aiinst')?.value??'',
+    require_follow:c.querySelector('.r-follow').checked,
+    follow_prompt:c.querySelector('.r-fprompt').value,
+    active:c.querySelector('.r-active').checked,
   };
-  if(kind==='comment') upd.public_reply = c.querySelector('.r-public').value;
-  if(!upd.keywords.length) return toast('Add at least one keyword');
-  if(!upd.use_ai && !upd.responses.length) return toast('Add at least one reply, or switch on AI');
-  const { error } = await sb.from('rules').update(upd).eq('id',id);
-  toast(error ? error.message : 'Rule saved');
+  if(kind==='comment'){
+    upd.public_reply=c.querySelector('.r-public').value;
+    upd.media_ids=c.querySelector('.r-media').value.split(',').map(s=>s.trim()).filter(Boolean);
+  }
+  if(!upd.keywords.length) return toast('حداقل یک کلمه کلیدی وارد کنید');
+  if(!upd.use_ai&&!upd.responses.length) return toast('حداقل یک پاسخ بنویسید یا هوش مصنوعی را روشن کنید');
+  const {error}=await sb.from('rules').update(upd).eq('id',id);
+  toast(error?error.message:'قانون ذخیره شد ✓');
+  if(!error) loadRules();
 }
 async function deleteRule(id){
-  if(!confirm('Delete this rule?')) return;
-  const { error } = await sb.from('rules').delete().eq('id',id);
+  if(!confirm('این قانون حذف شود؟')) return;
+  const {error}=await sb.from('rules').delete().eq('id',id);
   if(error) return toast(error.message);
   loadRules();
 }
 
-// ---------- activity log ----------
+// ---------- انتخاب پست ----------
+async function openPostPicker(btn){
+  const card=btn.closest('.card');
+  const box=card.querySelector('.r-picker');
+  if(!box.classList.contains('hidden')){box.classList.add('hidden');return;}
+  const fn=localStorage.getItem('mr_fn'),vt=localStorage.getItem('mr_vt');
+  if(!fn||!vt) return toast('اول در تب «راه‌اندازی» آدرس فانکشن و توکن را وارد کنید');
+  if(!mediaCache){
+    box.innerHTML='<label>در حال دریافت پست‌ها…</label>'; box.classList.remove('hidden');
+    try{
+      const r=await fetch(`${fn}?admin=${encodeURIComponent(vt)}&action=media`);
+      const d=await r.json();
+      mediaCache=d.data||[];
+    }catch(e){box.innerHTML='<label>خطا در دریافت پست‌ها</label>';return;}
+  }
+  const selected=new Set(card.querySelector('.r-media').value.split(',').filter(Boolean));
+  box.innerHTML=mediaCache.map(m=>`
+    <label><input type="checkbox" value="${m.id}" ${selected.has(m.id)?'checked':''}
+      onchange="pickPost(this)">
+      <span><span class="ltr" style="color:var(--muted);font-size:10.5px">${(m.timestamp||'').slice(0,10)}</span><br>
+      ${esc((m.caption||'(بدون کپشن)').slice(0,70))}…</span></label>`).join('')
+    ||'<label>پستی پیدا نشد</label>';
+  box.classList.remove('hidden');
+}
+function pickPost(cb){
+  const card=cb.closest('.card');
+  const ids=[...card.querySelectorAll('.r-picker input:checked')].map(i=>i.value);
+  card.querySelector('.r-media').value=ids.join(',');
+  card.querySelector('.r-mcount').textContent=ids.length?`(${faNum(ids.length)} پست)`:'(همه)';
+}
+
+// ---------- آمار ----------
+async function loadAnalytics(){
+  const now=Date.now();
+  const iso=ms=>new Date(now-ms).toISOString();
+  const count=async q=>{const {count:c}=await q;return c??0;};
+  const base=()=>sb.from('message_log').select('id',{count:'exact',head:true}).eq('status','sent');
+  const [today,week,total,ai,dm,cm,hour]=await Promise.all([
+    count(base().gte('at',new Date(new Date().setHours(0,0,0,0)).toISOString())),
+    count(base().gte('at',iso(7*864e5))),
+    count(base()),
+    count(base().eq('source','ai')),
+    count(base().eq('kind','dm')),
+    count(base().eq('kind','comment')),
+    count(base().gte('at',iso(36e5))),
+  ]);
+  const set=(id,v)=>document.getElementById(id).textContent=faNum(v);
+  set('stToday',today);set('stWeek',week);set('stTotal',total);set('stAi',ai);set('stDm',dm);set('stCm',cm);
+  const cap=settings?.hourly_cap??150;
+  document.getElementById('capText').textContent=`${hour} / ${cap}`;
+  document.getElementById('capBar').style.width=Math.min(100,hour/cap*100)+'%';
+
+  const {data:rows}=await sb.from('message_log').select('at').eq('status','sent').gte('at',iso(7*864e5)).limit(5000);
+  const days={},labels=[];
+  for(let i=6;i>=0;i--){const d=new Date(now-i*864e5);const k=d.toISOString().slice(0,10);days[k]=0;labels.push(k);}
+  (rows||[]).forEach(r=>{const k=r.at.slice(0,10);if(k in days)days[k]++;});
+  const max=Math.max(1,...Object.values(days));
+  document.getElementById('weekBars').innerHTML=labels.map(k=>`
+    <div class="bcol"><i style="height:${Math.round(days[k]/max*100)}%"></i><span>${k.slice(5)}</span></div>`).join('');
+}
+
+// ---------- فعالیت و بی‌صدا ----------
 async function loadLog(){
-  const filter = document.getElementById('logFilter').value;
-  let q = sb.from('message_log').select('*').order('at',{ascending:false}).limit(100);
-  if(filter) q = q.eq('kind',filter);
-  const { data, error } = await q;
+  const f=document.getElementById('logFilter').value;
+  let q=sb.from('message_log').select('*').order('at',{ascending:false}).limit(100);
+  if(f)q=q.eq('kind',f);
+  const {data,error}=await q;
   if(error) return toast(error.message);
-  document.getElementById('logInfo').textContent = 'auto-refreshes every 20s';
-  document.getElementById('logBody').innerHTML = (data||[]).map(r=>`
+  document.getElementById('logBody').innerHTML=(data||[]).map(r=>`
     <tr>
-      <td class="mono">${new Date(r.at).toLocaleString()}</td>
+      <td class="mono">${new Date(r.at).toLocaleString('fa-IR')}</td>
       <td class="mono">${esc(r.kind)}</td>
       <td class="mono">${esc(r.sender_name||r.sender_id||'')}</td>
       <td dir="auto">${esc(r.incoming||'')}</td>
       <td dir="auto">${esc(r.reply||'')}</td>
       <td>${r.source?`<span class="tag ${r.source==='ai'?'ai':''}">${esc(r.source)}</span>`:''}</td>
       <td><span class="tag ${r.status==='sent'?'sent':(r.status==='failed'?'failed':'')}" title="${esc(r.error||'')}">${esc(r.status||'')}</span></td>
-    </tr>`).join('') || '<tr><td colspan="7" class="hint" style="padding:20px">Nothing yet. Once webhooks flow, every event lands here.</td></tr>';
+      <td>${r.sender_id?`<button class="mutebtn" title="بی‌صدا کردن این شخص" onclick="muteSender('${esc(r.sender_id)}','${esc(r.sender_name||'')}')">🔇</button>`:''}</td>
+    </tr>`).join('')||'<tr><td colspan="8" class="hint" style="padding:20px">هنوز چیزی نیست. هر رویدادی اینجا ثبت می‌شود.</td></tr>';
   clearTimeout(logTimer);
-  logTimer = setTimeout(()=>{ if(!document.getElementById('view-activity').classList.contains('hidden')) loadLog(); }, 20000);
+  logTimer=setTimeout(()=>{if(!document.getElementById('view-activity').classList.contains('hidden'))loadLog();},20000);
+}
+async function muteSender(id,name){
+  id=id||document.getElementById('muteId').value.trim();
+  if(!id) return toast('شناسه فرستنده را وارد کنید');
+  const {error}=await sb.from('muted').upsert({sender_id:id,note:name||''});
+  if(error) return toast(error.message);
+  document.getElementById('muteId').value='';
+  toast('بی‌صدا شد — ربات دیگر به این شخص پاسخ نمی‌دهد');
+  loadMuted();
+}
+async function loadMuted(){
+  const {data}=await sb.from('muted').select('*').order('created_at',{ascending:false});
+  document.getElementById('mutedList').innerHTML=(data||[]).map(m=>`
+    <div class="row" style="border-bottom:1px solid var(--line);padding:7px 0">
+      <span class="ltr" style="font-size:12px">${esc(m.sender_id)}</span>
+      <span class="hint">${esc(m.note||'')}</span>
+      <button class="mutebtn" style="margin-inline-start:auto" onclick="unmute('${esc(m.sender_id)}')">🔊 آزاد کن</button>
+    </div>`).join('')||'<div class="hint">لیست خالی است.</div>';
+}
+async function unmute(id){
+  await sb.from('muted').delete().eq('sender_id',id);
+  loadMuted(); toast('آزاد شد');
 }
 
-// ---------- setup helpers ----------
+// ---------- راه‌اندازی ----------
 function saveLocal(){
-  localStorage.setItem('mr_fn', document.getElementById('fnUrl').value.trim().replace(/\/$/,''));
-  localStorage.setItem('mr_vt', document.getElementById('vTok').value.trim());
+  localStorage.setItem('mr_fn',document.getElementById('fnUrl').value.trim().replace(/\/$/,''));
+  localStorage.setItem('mr_vt',document.getElementById('vTok').value.trim());
 }
 async function adminCall(action){
   saveLocal();
-  const fn = localStorage.getItem('mr_fn'), vt = localStorage.getItem('mr_vt');
-  if(!fn||!vt) return toast('Fill in the function URL and verify token first');
-  const out = document.getElementById('adminOut');
-  out.textContent = 'Running…';
+  const fn=localStorage.getItem('mr_fn'),vt=localStorage.getItem('mr_vt');
+  if(!fn||!vt) return toast('اول آدرس فانکشن و verify token را وارد کنید');
+  const out=document.getElementById('adminOut');
+  out.textContent='در حال اجرا…';
   try{
-    const r = await fetch(`${fn}?admin=${encodeURIComponent(vt)}&action=${action}`);
-    out.textContent = JSON.stringify(await r.json(), null, 2);
-  }catch(e){ out.textContent = 'Request failed: '+e; }
+    const r=await fetch(`${fn}?admin=${encodeURIComponent(vt)}&action=${action}`);
+    out.textContent=JSON.stringify(await r.json(),null,2);
+  }catch(e){out.textContent='Request failed: '+e;}
 }
 
-// ---------- ui ----------
+// ---------- رابط ----------
 function showTab(t){
-  for(const v of ['rules','brain','activity','setup']){
-    document.getElementById('view-'+v).classList.toggle('hidden', v!==t);
-    document.getElementById('tab-'+v).classList.toggle('on', v===t);
+  for(const v of ['rules','brain','analytics','activity','setup']){
+    document.getElementById('view-'+v).classList.toggle('hidden',v!==t);
+    document.getElementById('tab-'+v).classList.toggle('on',v===t);
   }
-  if(t==='activity') loadLog();
+  if(t==='activity')loadLog();
+  if(t==='analytics')loadAnalytics();
 }
 function toast(m){
-  const el = document.getElementById('toast');
-  el.textContent = m; el.style.display='block';
-  clearTimeout(el._t); el._t = setTimeout(()=>el.style.display='none', 3200);
+  const el=document.getElementById('toast');
+  el.textContent=m; el.classList.add('show');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3200);
 }
 </script>
 </body>
