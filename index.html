@@ -205,6 +205,7 @@
       <button id="tab-rules" class="on" onclick="showTab('rules')">قوانین</button>
       <button id="tab-brain" onclick="showTab('brain')">مغز هوشمند</button>
       <button id="tab-analytics" onclick="showTab('analytics')">آمار</button>
+      <button id="tab-flow" onclick="showTab('flow')">مسیر گفتگو</button>
       <button id="tab-words" onclick="showTab('words')">کلمات</button>
       <button id="tab-activity" onclick="showTab('activity')">فعالیت</button>
       <button id="tab-setup" onclick="showTab('setup')">راه‌اندازی</button>
@@ -343,6 +344,37 @@
       <strong>۷ روز گذشته</strong>
       <div class="bars" id="weekBars"></div>
     </div>
+  </section>
+
+  <!-- مسیر گفتگو -->
+  <section id="view-flow" class="hidden">
+    <h2>مسیر گفتگو <small>سوال‌های چندگزینه‌ای با دکمه — کاربر لمس می‌کند و مرحله بعد را می‌گیرد</small></h2>
+    <div class="card">
+      <div class="row">
+        <label class="switch small"><input type="checkbox" id="flowEnabled"><span class="track"></span><span class="knob"></span></label>
+        <div style="flex:1">مسیر گفتگو فعال باشد</div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="grow">
+          <label class="f">نقطه شروع (اولین سوال)</label>
+          <select id="flowEntry"></select>
+        </div>
+        <div class="grow">
+          <label class="f">کلمات شروع‌کننده (با ویرگول جدا کنید)</label>
+          <input type="text" id="flowTriggers" dir="auto" placeholder="منو, شروع, start">
+        </div>
+      </div>
+      <div class="hint">هر کس یکی از این کلمات را دایرکت کند، منو برایش باز می‌شود. دکمه‌های منو مقدم بر همه قوانین هستند.</div>
+      <div class="row" style="margin-top:14px">
+        <button class="primary" onclick="saveFlowSettings()">ذخیره تنظیمات مسیر</button>
+        <button onclick="setIcebreakers()" title="گزینه‌های نقطه شروع (حداکثر ۴ تا) به عنوان منوی پیش‌فرض برای بازدیدکننده‌های جدید دایرکت ثبت می‌شود">🧊 ثبت منوی شروع برای افراد جدید</button>
+      </div>
+      <pre class="out hidden" id="flowOut" style="margin-top:10px"></pre>
+    </div>
+
+    <h2>پیام‌ها و سوال‌ها <small>هر کارت یک مرحله است؛ دکمه‌هایش به مرحله بعد اشاره می‌کنند. کارت بدون دکمه = پیام پایانی</small></h2>
+    <div id="flowNodes"></div>
+    <button class="fullm addbtn" onclick="addFlowNode()">+ افزودن مرحله جدید</button>
   </section>
 
   <!-- کلمات -->
@@ -835,6 +867,113 @@ async function unmute(id){
   loadMuted(); toast('آزاد شد');
 }
 
+// ---------- مسیر گفتگو ----------
+let flowNodes=[];
+async function loadFlow(){
+  const {data,error}=await sb.from('flow_nodes').select('*').order('created_at');
+  if(error) return toast(error.message);
+  flowNodes=data||[];
+  document.getElementById('flowEnabled').checked=settings?.flow_enabled??false;
+  document.getElementById('flowTriggers').value=(settings?.flow_triggers||[]).join(', ');
+  renderFlowEntrySelect();
+  renderFlowNodes();
+}
+function nodeName(id){const n=flowNodes.find(x=>x.id===id);return n?n.name:'—';}
+function renderFlowEntrySelect(){
+  const sel=document.getElementById('flowEntry');
+  sel.innerHTML='<option value="">— انتخاب کنید —</option>'+flowNodes.map(n=>`<option value="${n.id}" ${settings?.flow_entry===n.id?'selected':''}>${esc(n.name)}</option>`).join('');
+}
+function nextSelect(current){
+  return '<option value="">— انتخاب مرحله بعد —</option>'+flowNodes.map(n=>`<option value="${n.id}" ${current===n.id?'selected':''}>${esc(n.name)}</option>`).join('');
+}
+function renderFlowNodes(){
+  const host=document.getElementById('flowNodes');
+  if(!flowNodes.length){host.innerHTML='<div class="card hint">هنوز مرحله‌ای ندارید. اولین سوال را بسازید — مثلا «سلام! دنبال چی هستی؟» با دکمه‌های «عطر 🌸» و «بازی 🎲».</div>';return;}
+  host.innerHTML=flowNodes.map(n=>{
+    const opts=Array.isArray(n.options)?n.options:[];
+    const rows=opts.map((o,i)=>`
+      <div class="resp-item" data-i="${i}">
+        <input type="text" class="o-label" dir="auto" maxlength="20" style="flex:1" placeholder="متن دکمه (تا ۲۰ حرف)" value="${esc(o.label||'')}">
+        <select class="o-next" style="flex:1.4">${nextSelect(o.next)}</select>
+        <button type="button" class="rm" onclick="this.closest('.resp-item').remove()">✕</button>
+      </div>`).join('');
+    return `
+  <div class="card" data-nid="${n.id}">
+    <div class="row">
+      <input type="text" class="grow n-name" value="${esc(n.name)}" dir="auto" placeholder="نام داخلی مرحله (فقط شما می‌بینید)">
+    </div>
+    <label class="f">متن پیام / سوال</label>
+    <textarea class="n-msg" rows="3" dir="auto" placeholder="مثلا: سلام! 👋 دنبال چه چیزی هستی؟">${esc(n.message||'')}</textarea>
+    <label class="f">دکمه‌ها (حداکثر ۱۳ عدد — بدون دکمه = پیام پایانی)</label>
+    <div class="opt-list">${rows}</div>
+    <button type="button" class="addbtn" style="margin-top:2px" onclick="addFlowOption(this)">+ افزودن دکمه</button>
+    <div class="row" style="margin-top:14px">
+      <button class="primary" onclick="saveFlowNode('${n.id}')">ذخیره مرحله</button>
+      <button class="danger" onclick="deleteFlowNode('${n.id}')">حذف</button>
+    </div>
+  </div>`}).join('');
+}
+function addFlowOption(btn){
+  const list=btn.closest('.card').querySelector('.opt-list');
+  if(list.children.length>=13) return toast('اینستاگرام حداکثر ۱۳ دکمه اجازه می‌دهد');
+  const div=document.createElement('div');div.className='resp-item';
+  div.innerHTML=`<input type="text" class="o-label" dir="auto" maxlength="20" style="flex:1" placeholder="متن دکمه (تا ۲۰ حرف)">
+    <select class="o-next" style="flex:1.4">${nextSelect('')}</select>
+    <button type="button" class="rm" onclick="this.closest('.resp-item').remove()">✕</button>`;
+  list.appendChild(div);
+}
+async function addFlowNode(){
+  const {error}=await sb.from('flow_nodes').insert({name:'مرحله جدید'});
+  if(error) return toast(error.message);
+  const {data}=await sb.from('flow_nodes').select('*').order('created_at');
+  flowNodes=data||[]; renderFlowEntrySelect(); renderFlowNodes();
+  toast('مرحله اضافه شد');
+}
+async function saveFlowNode(id){
+  const c=document.querySelector(`.card[data-nid="${id}"]`);
+  const options=[...c.querySelectorAll('.opt-list .resp-item')].map(r=>({
+    label:r.querySelector('.o-label').value.trim(),
+    next:r.querySelector('.o-next').value||null,
+  })).filter(o=>o.label);
+  if(options.some(o=>!o.next)) return toast('هر دکمه باید به یک مرحله بعدی وصل باشد');
+  const upd={name:c.querySelector('.n-name').value.trim()||'بدون نام',
+    message:c.querySelector('.n-msg').value, options};
+  if(!upd.message.trim()) return toast('متن پیام را بنویسید');
+  const {error}=await sb.from('flow_nodes').update(upd).eq('id',id);
+  if(!error){const n=flowNodes.find(x=>x.id===id);Object.assign(n,upd);renderFlowEntrySelect();renderFlowNodes();}
+  toast(error?error.message:'مرحله ذخیره شد ✓');
+}
+async function deleteFlowNode(id){
+  const used=flowNodes.filter(n=>n.id!==id&&(n.options||[]).some(o=>o.next===id)).map(n=>n.name);
+  if(used.length) return toast('حذف نشد: دکمه‌هایی در «'+used.join('، ')+'» به این مرحله اشاره می‌کنند');
+  if(settings?.flow_entry===id) return toast('این مرحله نقطه شروع است — اول نقطه شروع را عوض کنید');
+  if(!confirm('این مرحله حذف شود؟')) return;
+  const {error}=await sb.from('flow_nodes').delete().eq('id',id);
+  if(error) return toast(error.message);
+  loadFlow();
+}
+async function saveFlowSettings(){
+  const upd={flow_enabled:document.getElementById('flowEnabled').checked,
+    flow_entry:document.getElementById('flowEntry').value||null,
+    flow_triggers:document.getElementById('flowTriggers').value.split(/[,،]/).map(s=>s.trim()).filter(Boolean),
+    updated_at:new Date().toISOString()};
+  if(upd.flow_enabled&&!upd.flow_entry) return toast('نقطه شروع را انتخاب کنید');
+  const {error}=await sb.from('settings').update(upd).eq('id',1);
+  if(!error) settings={...settings,...upd};
+  toast(error?error.message:'تنظیمات مسیر ذخیره شد ✓');
+}
+async function setIcebreakers(){
+  await saveFlowSettings();
+  const fn=localStorage.getItem('mr_fn'),vt=localStorage.getItem('mr_vt');
+  if(!fn||!vt) return toast('اول در تب «راه‌اندازی» آدرس فانکشن و توکن را وارد کنید');
+  const out=document.getElementById('flowOut');
+  out.classList.remove('hidden'); out.textContent='در حال ثبت…';
+  try{
+    const r=await fetch(`${fn}?admin=${encodeURIComponent(vt)}&action=icebreakers`);
+    out.textContent=JSON.stringify(await r.json(),null,2);
+  }catch(e){out.textContent='Request failed: '+e;}
+}
+
 // ---------- راه‌اندازی ----------
 function saveLocal(){
   localStorage.setItem('mr_fn',document.getElementById('fnUrl').value.trim().replace(/\/$/,''));
@@ -854,13 +993,14 @@ async function adminCall(action){
 
 // ---------- رابط ----------
 function showTab(t){
-  for(const v of ['rules','brain','analytics','words','activity','setup']){
+  for(const v of ['rules','brain','analytics','flow','words','activity','setup']){
     document.getElementById('view-'+v).classList.toggle('hidden',v!==t);
     document.getElementById('tab-'+v).classList.toggle('on',v===t);
   }
   if(t==='activity')loadLog();
   if(t==='analytics')loadAnalytics();
   if(t==='words')renderWords();
+  if(t==='flow')loadFlow();
 }
 function toast(m){
   const el=document.getElementById('toast');
