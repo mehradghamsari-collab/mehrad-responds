@@ -3,135 +3,166 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#14151A">
+<meta name="theme-color" content="#F6F6F7">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="mehrad.responds">
 <title>mehrad.responds — اتاق فرمان</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
-    --bg:#14151A; --panel:#1C1E24; --panel2:#22242C; --line:#2E3039;
-    --ink:#EDEBE5; --muted:#9497A1; --amber:#FFB454; --amber-dim:#8a6a3a;
-    --live:#4ADE80; --danger:#F87171; --mono:'JetBrains Mono',monospace;
-    --fa:'Vazirmatn',sans-serif; --r:14px;
+    --bg:#F6F6F7; --card:#FFFFFF; --line:#E8E8EC; --line2:#DEDEE4;
+    --ink:#1B1D22; --muted:#787C88; --soft:#F1F1F4;
+    --accent:#4056D6; --accent-soft:#EDEFFB;
+    --live:#16A34A; --live-soft:#E8F6EE; --danger:#DC2626; --danger-soft:#FDEBEB;
+    --mono:'JetBrains Mono',monospace; --fa:'Vazirmatn',sans-serif; --r:16px;
+    --sh:0 1px 2px rgba(17,18,24,.04), 0 4px 16px rgba(17,18,24,.05);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{background:var(--bg);color:var(--ink);font-family:var(--fa);font-size:15px;line-height:1.9}
   textarea,input,select,button{font-family:inherit;font-size:inherit;color:inherit}
   textarea,input[type=text],input[type=email],input[type=password],input[type=number],select{
-    background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 13px;width:100%;
+    background:var(--card);border:1px solid var(--line2);border-radius:12px;padding:11px 14px;width:100%;
     transition:border-color .2s, box-shadow .2s;
   }
-  textarea{resize:vertical;min-height:70px}
-  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(255,180,84,.15)}
+  textarea{resize:vertical;min-height:64px}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
   .ltr{direction:ltr;text-align:left;font-family:var(--mono);font-size:13px}
 
-  button{cursor:pointer;border:1px solid var(--line);background:var(--panel2);border-radius:11px;
-    padding:11px 18px;color:var(--ink);min-height:44px;
+  button{cursor:pointer;border:1px solid var(--line2);background:var(--card);border-radius:12px;
+    padding:11px 18px;color:var(--ink);min-height:44px;font-weight:500;
     transition:transform .12s ease, background .2s, border-color .2s, box-shadow .2s}
-  button:hover{border-color:var(--amber-dim)}
-  button:active{transform:scale(.965)}
-  button.primary{background:var(--amber);border-color:var(--amber);color:#1a1206;font-weight:700}
-  button.primary:hover{box-shadow:0 4px 18px rgba(255,180,84,.28)}
-  button.danger{color:var(--danger);border-color:#5a2f2f}
-  button.ghost{background:transparent}
-  button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button:active{transform:scale(.97)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  button.primary:hover{box-shadow:0 6px 20px rgba(64,86,214,.3);color:#fff}
+  button.danger{color:var(--danger);border-color:#F3C6C6}
+  button.danger:hover{background:var(--danger-soft);border-color:var(--danger)}
+  button.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+  button.ghost:hover{color:var(--accent)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
   .wrap{max-width:1060px;margin:0 auto;padding:0 14px 90px}
 
-  header{position:sticky;top:0;z-index:10;background:linear-gradient(var(--bg) 82%,transparent);padding:12px 0 8px}
-  .bar{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
-       border-radius:var(--r);padding:12px 16px}
+  header{position:sticky;top:0;z-index:10;background:linear-gradient(var(--bg) 78%,transparent);padding:12px 0 6px}
+  .bar{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+       border-radius:var(--r);padding:12px 18px;box-shadow:var(--sh)}
   .brand{font-weight:800;font-family:var(--mono);font-size:15px;direction:ltr}
-  .brand span{color:var(--amber)}
-  .status{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-inline-start:auto;white-space:nowrap}
-  .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
-  .dot.live{background:var(--live);animation:pulse 1.6s infinite}
-  .dot.off{background:var(--danger)}
-  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,.5)}50%{box-shadow:0 0 0 6px rgba(74,222,128,0)}}
+  .brand span{color:var(--accent)}
+  .status{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;margin-inline-start:auto;white-space:nowrap;
+    border-radius:999px;padding:5px 13px}
+  .status.on{color:var(--live);background:var(--live-soft)}
+  .status.off{color:var(--danger);background:var(--danger-soft)}
+  .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+  .status.on .dot{animation:pulse 1.8s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.35)}50%{box-shadow:0 0 0 6px rgba(22,163,74,0)}}
 
-  .switch{position:relative;width:52px;height:28px;flex:none}
+  .switch{position:relative;width:52px;height:30px;flex:none}
   .switch input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;margin:0;z-index:2}
-  .switch .track{position:absolute;inset:0;background:var(--panel2);border:1px solid var(--line);border-radius:999px;transition:.25s}
-  .switch .knob{position:absolute;top:3px;inset-inline-start:3px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:.25s cubic-bezier(.34,1.56,.64,1)}
-  .switch input:checked ~ .track{background:#2a3d2f;border-color:var(--live)}
-  .switch input:checked ~ .knob{inset-inline-start:27px;background:var(--live)}
-  .switch.small{width:42px;height:24px}
-  .switch.small .knob{width:18px;height:18px}
+  .switch .track{position:absolute;inset:0;background:var(--line);border:1px solid var(--line2);border-radius:999px;transition:.25s}
+  .switch .knob{position:absolute;top:3px;inset-inline-start:3px;width:24px;height:24px;border-radius:50%;background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.25s cubic-bezier(.34,1.56,.64,1)}
+  .switch input:checked ~ .track{background:var(--live);border-color:var(--live)}
+  .switch input:checked ~ .knob{inset-inline-start:25px}
+  .switch.small{width:44px;height:26px}
+  .switch.small .knob{width:20px;height:20px}
   .switch.small input:checked ~ .knob{inset-inline-start:21px}
 
   nav{display:flex;gap:6px;margin:12px 0;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
   nav::-webkit-scrollbar{display:none}
-  nav button{border-radius:999px;padding:9px 18px;font-size:13.5px;background:transparent;white-space:nowrap;min-height:40px}
-  nav button.on{background:var(--panel);border-color:var(--amber);color:var(--amber)}
+  nav button{border-radius:999px;padding:9px 18px;font-size:13.5px;background:transparent;border-color:transparent;
+    white-space:nowrap;min-height:40px;color:var(--muted)}
+  nav button.on{background:var(--card);border-color:var(--line);color:var(--accent);font-weight:700;box-shadow:var(--sh)}
 
   section{animation:fadeUp .3s ease}
   @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
-  h2{font-size:16.5px;margin:20px 0 10px;font-weight:700}
+  h2{font-size:16.5px;margin:22px 0 10px;font-weight:800}
   h2 small{color:var(--muted);font-weight:400;font-size:12.5px;display:block}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px;transition:border-color .25s}
-  .card:hover{border-color:#3a3d47}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:12px;
+    box-shadow:var(--sh);transition:border-color .25s}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .grow{flex:1;min-width:150px}
-  label.f{display:block;font-size:12px;color:var(--muted);font-weight:500;margin:13px 0 6px}
-  .fired{font-family:var(--mono);font-size:11px;color:var(--amber);border:1px solid var(--amber-dim);border-radius:999px;padding:3px 11px;direction:ltr;cursor:help;white-space:nowrap}
+  label.f{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 6px}
+  .fired{font-family:var(--mono);font-size:11px;color:var(--accent);background:var(--accent-soft);border-radius:999px;
+    padding:4px 12px;direction:ltr;cursor:help;white-space:nowrap;font-weight:600}
   .hint{color:var(--muted);font-size:12.5px;margin-top:6px}
-  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--panel2);
-    border:1px solid var(--amber);border-radius:11px;padding:11px 20px;font-size:13.5px;z-index:60;pointer-events:none;
-    transition:opacity .25s, transform .25s;max-width:90vw;text-align:center}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);
+    color:#fff;border-radius:12px;padding:12px 22px;font-size:13.5px;z-index:60;pointer-events:none;
+    transition:opacity .25s, transform .25s;max-width:90vw;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.25)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* response boxes */
+  .resp-item{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;animation:fadeUp .25s ease}
+  .resp-item textarea{flex:1}
+  .resp-item .rm{min-height:36px;padding:6px 12px;border-radius:10px;color:var(--muted);flex:none;margin-top:4px}
+  .resp-item .rm:hover{color:var(--danger);border-color:var(--danger)}
+  .addbtn{border-style:dashed;color:var(--muted);width:100%;font-size:13.5px}
+
+  /* post chips */
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{display:flex;align-items:center;gap:7px;background:var(--soft);border:1px solid var(--line);border-radius:999px;
+    padding:4px 12px 4px 6px;font-size:12px;max-width:230px}
+  .chip img{width:26px;height:26px;border-radius:50%;object-fit:cover;flex:none}
+  .chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chip.all{padding:5px 14px;color:var(--muted)}
 
   /* آمار */
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;text-align:center}
-  .stat b{display:block;font-size:26px;font-weight:800;color:var(--amber)}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;text-align:center;box-shadow:var(--sh)}
+  .stat b{display:block;font-size:26px;font-weight:800;color:var(--ink)}
+  .stat.hl b{color:var(--accent)}
   .stat span{font-size:12px;color:var(--muted)}
-  .meter{height:12px;background:var(--bg);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-top:10px}
-  .meter i{display:block;height:100%;background:linear-gradient(90deg,var(--live),var(--amber));width:0;transition:width .8s ease;border-radius:999px}
-  .bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding-top:10px}
+  .meter{height:12px;background:var(--soft);border-radius:999px;overflow:hidden;margin-top:10px}
+  .meter i{display:block;height:100%;background:linear-gradient(90deg,var(--live),var(--accent));width:0;transition:width .8s ease;border-radius:999px}
+  .bars{display:flex;align-items:flex-end;gap:6px;height:130px;padding-top:12px}
   .bcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%}
-  .bcol i{width:100%;max-width:44px;background:var(--amber);border-radius:6px 6px 0 0;min-height:3px;transition:height .7s ease;opacity:.9}
-  .bcol span{font-size:10.5px;color:var(--muted);direction:ltr}
+  .bcol i{width:100%;max-width:40px;background:var(--accent);border-radius:6px 6px 0 0;min-height:3px;transition:height .7s ease;opacity:.85}
+  .bcol.today i{background:var(--live)}
+  .bcol span{font-size:10px;color:var(--muted);direction:ltr}
+  .livebadge{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--live);font-weight:700}
+  .livebadge .dot{animation:pulse 1.8s infinite}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th{font-size:11px;color:var(--muted);text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
-  td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;max-width:300px;overflow-wrap:anywhere}
+  th{font-size:11px;color:var(--muted);text-align:right;padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:600}
+  td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top;max-width:300px;overflow-wrap:anywhere}
+  tr:hover td{background:var(--soft)}
   td.mono{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap;direction:ltr;text-align:right}
-  .tag{font-family:var(--mono);font-size:10.5px;border-radius:6px;padding:2px 8px;border:1px solid var(--line);direction:ltr;display:inline-block}
-  .tag.ai{color:var(--amber);border-color:var(--amber-dim)}
-  .tag.sent{color:var(--live)}
-  .tag.failed{color:var(--danger)}
-  .mutebtn{padding:4px 10px;min-height:30px;font-size:12px;border-radius:8px}
+  .tag{font-family:var(--mono);font-size:10.5px;border-radius:6px;padding:2px 9px;border:1px solid var(--line);direction:ltr;display:inline-block;background:var(--soft)}
+  .tag.ai{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+  .tag.sent{color:var(--live);background:var(--live-soft);border-color:transparent}
+  .tag.failed{color:var(--danger);background:var(--danger-soft);border-color:transparent}
+  .mutebtn{padding:4px 10px;min-height:30px;font-size:12px;border-radius:9px}
 
-  .postpick{border:1px solid var(--line);border-radius:10px;max-height:230px;overflow:auto;margin-top:8px;background:var(--bg);width:100%}
-  .postpick label{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13px;align-items:flex-start}
-  .postpick label:hover{background:var(--panel2)}
-  .postpick input{width:auto;margin-top:5px}
+  .postpick{border:1px solid var(--line);border-radius:12px;max-height:260px;overflow:auto;margin-top:8px;background:var(--card);width:100%}
+  .postpick label{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13px;align-items:center}
+  .postpick label:hover{background:var(--soft)}
+  .postpick input{width:auto}
+  .postpick img{width:38px;height:38px;border-radius:9px;object-fit:cover;flex:none;background:var(--soft)}
+
+  .warnbox{background:#FFF7E6;border:1px solid #F4D9A6;color:#8a6320;border-radius:12px;padding:10px 14px;font-size:13px;margin-top:8px}
 
   .auth{max-width:400px;margin:10vh auto 0}
-  .auth .card{padding:26px}
+  .auth .card{padding:28px}
   .auth h1{font-size:21px;margin-bottom:4px;font-family:var(--mono);direction:ltr;text-align:center}
   .auth p{color:var(--muted);font-size:13.5px;margin-bottom:18px;text-align:center}
   .stack>*{margin-bottom:10px}
-  code{font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 7px;direction:ltr;display:inline-block}
+  code{font-family:var(--mono);font-size:12px;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:1px 7px;direction:ltr;display:inline-block}
   .hidden{display:none!important}
-  pre.out{font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);
-    border-radius:10px;padding:12px;min-height:56px;max-height:280px;overflow:auto;direction:ltr;text-align:left}
+  pre.out{font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;background:var(--soft);border:1px solid var(--line);
+    border-radius:12px;padding:12px;min-height:56px;max-height:280px;overflow:auto;direction:ltr;text-align:left}
 
   @media (max-width:640px){
     body{font-size:14.5px}
-    .bar{padding:10px 12px;gap:9px}
+    .bar{padding:10px 12px;gap:8px}
     .brand{font-size:13px}
-    .card{padding:13px}
+    .card{padding:14px}
     .stat b{font-size:22px}
-    td,th{padding:7px 6px}
-    button{padding:10px 14px}
+    td,th{padding:8px 6px}
     .fullm{width:100%}
   }
 </style>
@@ -141,7 +172,7 @@
 <!-- ======== ورود ======== -->
 <div id="authView" class="wrap auth hidden">
   <div class="card">
-    <h1>mehrad<span style="color:var(--amber)">.responds</span></h1>
+    <h1>mehrad<span style="color:var(--accent)">.responds</span></h1>
     <p id="authSub">اتاق فرمان را به پروژه Supabase وصل کنید.</p>
     <div id="cfgForm" class="stack">
       <input type="text" class="ltr" id="cfgUrl" placeholder="Supabase URL (https://xxxx.supabase.co)">
@@ -154,7 +185,7 @@
       <input type="password" class="ltr" id="password" placeholder="Password" autocomplete="current-password">
       <button class="primary" style="width:100%" onclick="login()">ورود</button>
       <div class="hint">با کاربری که در Supabase → Authentication ساختید وارد شوید.
-        <a href="#" onclick="resetConfig();return false" style="color:var(--amber)">تغییر پروژه</a></div>
+        <a href="#" onclick="resetConfig();return false" style="color:var(--accent)">تغییر پروژه</a></div>
     </div>
   </div>
 </div>
@@ -164,7 +195,7 @@
   <header>
     <div class="bar">
       <div class="brand">mehrad<span>.responds</span></div>
-      <div class="status"><span class="dot" id="liveDot"></span><span id="liveText">…</span></div>
+      <div class="status" id="statusPill"><span class="dot"></span><span id="liveText">…</span></div>
       <label class="switch" title="کلید اصلی — توقف یا فعال‌سازی همه پاسخ‌ها">
         <input type="checkbox" id="masterSwitch" onchange="toggleMaster(this.checked)">
         <span class="track"></span><span class="knob"></span>
@@ -174,6 +205,7 @@
       <button id="tab-rules" class="on" onclick="showTab('rules')">قوانین</button>
       <button id="tab-brain" onclick="showTab('brain')">مغز هوشمند</button>
       <button id="tab-analytics" onclick="showTab('analytics')">آمار</button>
+      <button id="tab-words" onclick="showTab('words')">کلمات</button>
       <button id="tab-activity" onclick="showTab('activity')">فعالیت</button>
       <button id="tab-setup" onclick="showTab('setup')">راه‌اندازی</button>
     </nav>
@@ -183,34 +215,27 @@
   <section id="view-rules">
     <h2>قوانین دایرکت <small>وقتی پیام دایرکت شامل کلمه کلیدی باشد، پاسخ ارسال می‌شود</small></h2>
     <div id="dmRules"></div>
-    <button class="fullm" onclick="addRule('dm')">+ افزودن قانون دایرکت</button>
+    <button class="fullm addbtn" onclick="addRule('dm')">+ افزودن قانون دایرکت</button>
 
     <h2>قوانین کامنت <small>وقتی کامنت شامل کلمه کلیدی باشد، به فرد دایرکت می‌دهد (و در صورت تمایل زیر کامنت هم پاسخ می‌دهد)</small></h2>
     <div id="commentRules"></div>
-    <button class="fullm" onclick="addRule('comment')">+ افزودن قانون کامنت</button>
-    <div class="hint" style="margin-top:14px">💡 «اجرا ×N» یعنی این قانون تا حالا N بار فعال شده و پاسخ فرستاده است — شمارنده عملکرد هر قانون.</div>
+    <button class="fullm addbtn" onclick="addRule('comment')">+ افزودن قانون کامنت</button>
+    <div class="hint" style="margin-top:14px">💡 «اجرا ×N» یعنی این قانون تا حالا N بار پاسخ فرستاده است.</div>
   </section>
 
   <!-- مغز هوشمند -->
   <section id="view-brain" class="hidden">
-    <h2>مغز هوشمند <small>شخصیت، دانش و رفتار دستیار Gemini شما</small></h2>
+    <h2>موتور هوش مصنوعی <small>انتخاب مدل — قابل تغییر در هر لحظه، حتی وسط کار</small></h2>
     <div class="card">
       <div class="row">
-        <label class="switch small"><input type="checkbox" id="aiFallback"><span class="track"></span><span class="knob"></span></label>
-        <div style="flex:1">هوش مصنوعی به دایرکت‌هایی که هیچ قانونی نگرفته پاسخ بدهد
-        <div class="hint">خاموش = ربات فقط با کلمات کلیدی شما فعال می‌شود و به بقیه پیام‌ها کاری ندارد. برای کنترل کامل، خاموش نگهش دارید.</div></div>
-      </div>
-
-      <label class="f">شخصیت و دستورالعمل‌ها (پرامپت سیستم)</label>
-      <textarea id="sysPrompt" rows="6" dir="auto"></textarea>
-      <div class="hint">ربات کیست؟ چه لحنی دارد؟ به چه زبانی جواب بدهد؟ چه کاری هرگز نکند؟ مثل شرح شغل بنویسید.</div>
-
-      <label class="f">پایگاه دانش — هر چیزی که ربات اجازه دارد بداند</label>
-      <textarea id="knowledge" rows="9" dir="auto" placeholder="سوال‌های پرتکرار، قیمت‌ها، لینک‌ها، معرفی محصولات…&#10;&#10;س: قیمت LATHERWORK چند است؟&#10;ج: …"></textarea>
-      <div class="hint">آموزش ربات همین‌جاست: هرچه اطلاعات دقیق‌تری اینجا بگذارید، جواب‌ها بهتر می‌شود.</div>
-
-      <div class="row" style="margin-top:12px">
         <div class="grow">
+          <label class="f">پاسخ‌دهنده هوش مصنوعی</label>
+          <select id="llmProvider" onchange="toggleOllamaFields()">
+            <option value="gemini">Gemini (گوگل)</option>
+            <option value="ollama">Ollama Cloud</option>
+          </select>
+        </div>
+        <div class="grow gemini-only">
           <label class="f">مدل Gemini</label>
           <select id="model" class="ltr">
             <option value="gemini-2.5-flash">gemini-2.5-flash (سریع و رایگان)</option>
@@ -218,22 +243,58 @@
             <option value="gemini-2.5-pro">gemini-2.5-pro (باهوش‌ترین)</option>
           </select>
         </div>
+      </div>
+      <div class="ollama-only hidden">
+        <div class="row">
+          <div class="grow">
+            <label class="f">آدرس Ollama</label>
+            <input type="text" class="ltr" id="ollamaUrl" placeholder="https://ollama.com">
+          </div>
+          <div class="grow">
+            <label class="f">مدل Ollama</label>
+            <input type="text" class="ltr" id="ollamaModel" placeholder="gpt-oss:20b">
+          </div>
+        </div>
+        <div class="hint">کلید API را از ollama.com بگیرید و در Supabase → Edge Functions → Secrets با نام <code>OLLAMA_API_KEY</code> ذخیره کنید، بعد فانکشن را یک بار Deploy کنید.</div>
+      </div>
+    </div>
+
+    <h2>شخصیت و دانش <small>ربات شما چه کسی است و چه می‌داند</small></h2>
+    <div class="card">
+      <div class="row">
+        <label class="switch small"><input type="checkbox" id="aiFallback"><span class="track"></span><span class="knob"></span></label>
+        <div style="flex:1">هوش مصنوعی به دایرکت‌هایی که هیچ قانونی نگرفته پاسخ بدهد
+        <div class="hint">خاموش = ربات فقط با کلمات کلیدی شما فعال می‌شود.</div></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label class="switch small"><input type="checkbox" id="aiFirstOnly"><span class="track"></span><span class="knob"></span></label>
+        <div style="flex:1">هوش مصنوعی فقط شروع‌کننده گفتگو باشد
+        <div class="hint">فقط اولین پاسخ هر نفر را هوش مصنوعی می‌دهد؛ اگر دوباره پیام دادند، ربات ساکت می‌ماند تا خودتان ادامه دهید. (بعد از ۲۴ ساعت سکوت، دوباره از اول شروع می‌کند)</div></div>
+      </div>
+
+      <label class="f">شخصیت و دستورالعمل‌ها (پرامپت سیستم)</label>
+      <textarea id="sysPrompt" rows="6" dir="auto"></textarea>
+
+      <label class="f">پایگاه دانش — هر چیزی که ربات اجازه دارد بداند</label>
+      <textarea id="knowledge" rows="9" dir="auto" placeholder="سوال‌های پرتکرار، قیمت‌ها، لینک‌ها، معرفی محصولات…&#10;&#10;س: قیمت LATHERWORK چند است؟&#10;ج: …"></textarea>
+      <div class="hint">آموزش ربات همین‌جاست: هرچه اطلاعات دقیق‌تری اینجا بگذارید، جواب‌ها بهتر می‌شود.</div>
+
+      <div class="row" style="margin-top:12px">
         <div class="grow">
           <label class="f">خلاقیت: <span id="tempVal">0.7</span></label>
           <input type="range" id="temp" min="0" max="1.5" step="0.1" value="0.7"
                  oninput="document.getElementById('tempVal').textContent=this.value" style="width:100%">
         </div>
-      </div>
-      <div class="row">
         <div class="grow">
-          <label class="f">حافظه گفتگو (تعداد رد و بدل برای هر نفر)</label>
+          <label class="f">حافظه گفتگو (رد و بدل برای هر نفر)</label>
           <input type="number" id="memTurns" min="0" max="20">
         </div>
         <div class="grow">
-          <label class="f">حداکثر طول پاسخ (کاراکتر، سقف اینستاگرام ۱۰۰۰)</label>
+          <label class="f">حداکثر طول پاسخ (کاراکتر)</label>
           <input type="number" id="maxChars" min="50" max="1000">
         </div>
       </div>
+      <div class="hint">پاسخ‌ها کوتاه اما همیشه با جمله کامل تمام می‌شوند — جمله نیمه‌کاره ارسال نمی‌شود.</div>
     </div>
 
     <h2>رفتار طبیعی <small>تاخیر انسانی و سقف پاسخ‌دهی</small></h2>
@@ -248,26 +309,24 @@
         <div class="grow"><input type="number" id="cDelayMin" min="0" max="120" placeholder="مثلا 20"></div>
         <div class="grow"><input type="number" id="cDelayMax" min="0" max="120" placeholder="مثلا 60"></div>
       </div>
-      <div class="hint">ربات قبل از پاسخ، زمانی تصادفی در این بازه صبر می‌کند تا طبیعی به نظر برسد. هر دو صفر = پاسخ فوری. سقف ۱۲۰ ثانیه.</div>
-
-      <label class="f">سقف پاسخ در هر ساعت (سوپاپ اطمینان)</label>
+      <label class="f">سقف پاسخ در هر ساعت</label>
       <input type="number" id="hourlyCap" min="10" max="1000">
-      <div class="hint">اگر تعداد پاسخ‌های یک ساعت به این عدد برسد، ربات موقتا ساکت می‌شود. میزان مصرف را در تب «آمار» ببینید.</div>
-
       <div style="margin-top:16px"><button class="primary fullm" onclick="saveBrain()">ذخیره همه تنظیمات</button></div>
     </div>
   </section>
 
   <!-- آمار -->
   <section id="view-analytics" class="hidden">
-    <h2>آمار <small>عملکرد ربات در یک نگاه</small></h2>
+    <h2>آمار زنده <small><span class="livebadge"><span class="dot"></span>هر ۳۰ ثانیه خودکار به‌روز می‌شود</span></small></h2>
     <div class="stats">
-      <div class="stat"><b id="stToday">–</b><span>پاسخ امروز</span></div>
+      <div class="stat hl"><b id="stToday">–</b><span>پاسخ امروز</span></div>
       <div class="stat"><b id="stWeek">–</b><span>پاسخ ۷ روز اخیر</span></div>
       <div class="stat"><b id="stTotal">–</b><span>کل پاسخ‌ها</span></div>
       <div class="stat"><b id="stAi">–</b><span>پاسخ هوش مصنوعی</span></div>
       <div class="stat"><b id="stDm">–</b><span>دایرکت</span></div>
       <div class="stat"><b id="stCm">–</b><span>کامنت</span></div>
+      <div class="stat"><b id="stGated">–</b><span>به قفل فالو خوردند</span></div>
+      <div class="stat hl"><b id="stConv">–</b><span>فالو کردند و برگشتند</span></div>
     </div>
     <div class="card" style="margin-top:12px">
       <div class="row" style="justify-content:space-between">
@@ -275,13 +334,27 @@
         <span id="capText" class="ltr" style="color:var(--muted)">–</span>
       </div>
       <div class="meter"><i id="capBar"></i></div>
-      <div class="hint">وقتی نوار پر شود، ربات تا شروع ساعت بعد پاسخ نمی‌دهد. سقف را در «مغز هوشمند → رفتار طبیعی» تغییر دهید.</div>
     </div>
     <div class="card">
-      <strong>پاسخ‌های ۷ روز گذشته</strong>
+      <strong>امروز، ساعت به ساعت</strong>
+      <div class="bars" id="hourBars"></div>
+    </div>
+    <div class="card">
+      <strong>۷ روز گذشته</strong>
       <div class="bars" id="weekBars"></div>
     </div>
-    <div style="text-align:center"><button onclick="loadAnalytics()">به‌روزرسانی آمار</button></div>
+  </section>
+
+  <!-- کلمات -->
+  <section id="view-words" class="hidden">
+    <h2>دفتر کلمات کلیدی <small>همه کلمات محرک شما در یک‌جا — کلمه تکراری با محدوده مشترک اجازه ثبت ندارد</small></h2>
+    <div class="row" style="margin-bottom:10px">
+      <input type="text" class="grow" id="wordSearch" placeholder="جستجوی کلمه…" oninput="renderWords()">
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table><thead><tr><th>کلمه</th><th>نوع</th><th>قانون</th><th>محدوده</th><th>اجرا</th><th>وضعیت</th></tr></thead>
+      <tbody id="wordsBody"></tbody></table>
+    </div>
   </section>
 
   <!-- فعالیت -->
@@ -293,14 +366,14 @@
         <option value="comment">کامنت‌ها</option><option value="webhook">رویدادهای وب‌هوک</option>
       </select>
       <button onclick="loadLog()">تازه‌سازی</button>
-      <span class="hint">هر ۲۰ ثانیه خودکار تازه می‌شود · دکمه 🔇 = ربات دیگر به آن شخص پاسخ نمی‌دهد</span>
+      <span class="hint">🔇 = ربات دیگر به آن شخص پاسخ نمی‌دهد</span>
     </div>
     <div class="card" style="padding:0;overflow-x:auto">
       <table><thead><tr><th>زمان</th><th>نوع</th><th>فرستنده</th><th>پیام دریافتی</th><th>پاسخ</th><th>روش</th><th>وضعیت</th><th></th></tr></thead>
       <tbody id="logBody"></tbody></table>
     </div>
     <div class="card">
-      <strong>افراد بی‌صدا شده</strong> <span class="hint">ربات هرگز به این‌ها پاسخ نمی‌دهد (مثلا دوستان و خانواده)</span>
+      <strong>افراد بی‌صدا شده</strong> <span class="hint">ربات هرگز به این‌ها پاسخ نمی‌دهد</span>
       <div id="mutedList" style="margin-top:8px"></div>
       <div class="row" style="margin-top:8px">
         <input type="text" class="ltr grow" id="muteId" placeholder="sender id (از جدول بالا)">
@@ -320,14 +393,14 @@
       <div class="row" style="margin-top:14px">
         <button onclick="adminCall('status')">بررسی اتصال</button>
         <button onclick="adminCall('subscribe')">اشتراک وب‌هوک</button>
-        <button onclick="adminCall('test-gemini')">تست Gemini</button>
+        <button onclick="adminCall('test-gemini')">تست هوش مصنوعی</button>
       </div>
       <label class="f">نتیجه</label>
       <pre class="out" id="adminOut">—</pre>
     </div>
     <div class="card">
       <strong>نصب روی گوشی</strong>
-      <div class="hint">این صفحه را در مرورگر گوشی باز کنید → دکمه اشتراک‌گذاری → «Add to Home Screen». مثل یک اپ واقعی با آیکون مخصوص باز می‌شود.</div>
+      <div class="hint">این صفحه را در مرورگر گوشی باز کنید → دکمه اشتراک‌گذاری → «Add to Home Screen».</div>
       <div class="row" style="margin-top:14px"><button class="ghost" onclick="logout()">خروج از حساب</button></div>
     </div>
   </section>
@@ -336,8 +409,9 @@
 <div class="toast" id="toast"></div>
 
 <script>
-let sb=null, settings=null, logTimer=null, mediaCache=null;
+let sb=null, settings=null, allRules=[], logTimer=null, statTimer=null, mediaCache=null;
 const faNum = n => Number(n??0).toLocaleString('fa-IR');
+function esc(s){return (s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 // ---------- شروع ----------
 const cfg={url:localStorage.getItem('mr_url'), key:localStorage.getItem('mr_key')};
@@ -371,10 +445,10 @@ async function enterApp(){
   show('appView');
   document.getElementById('fnUrl').value=localStorage.getItem('mr_fn')||'';
   document.getElementById('vTok').value=localStorage.getItem('mr_vt')||'';
-  await loadSettings(); await loadRules(); loadMuted();
+  await loadSettings(); await loadRules(); loadMuted(); fetchMedia();
 }
 
-// ---------- تنظیمات و کلید اصلی ----------
+// ---------- تنظیمات ----------
 async function loadSettings(){
   const {data,error}=await sb.from('settings').select('*').eq('id',1).single();
   if(error) return toast('خطا در بارگذاری تنظیمات: '+error.message);
@@ -382,6 +456,11 @@ async function loadSettings(){
   document.getElementById('masterSwitch').checked=data.bot_active;
   setLive(data.bot_active);
   document.getElementById('aiFallback').checked=data.ai_fallback;
+  document.getElementById('aiFirstOnly').checked=data.ai_first_only??false;
+  document.getElementById('llmProvider').value=data.llm_provider||'gemini';
+  document.getElementById('ollamaUrl').value=data.ollama_url||'https://ollama.com';
+  document.getElementById('ollamaModel').value=data.ollama_model||'gpt-oss:20b';
+  toggleOllamaFields();
   document.getElementById('sysPrompt').value=data.system_prompt;
   document.getElementById('knowledge').value=data.knowledge_base;
   document.getElementById('model').value=data.gemini_model;
@@ -395,56 +474,111 @@ async function loadSettings(){
   document.getElementById('cDelayMax').value=data.comment_delay_max??0;
   document.getElementById('hourlyCap').value=data.hourly_cap??150;
 }
+function toggleOllamaFields(){
+  const isO=document.getElementById('llmProvider').value==='ollama';
+  document.querySelectorAll('.ollama-only').forEach(e=>e.classList.toggle('hidden',!isO));
+  document.querySelectorAll('.gemini-only').forEach(e=>e.classList.toggle('hidden',isO));
+}
 function setLive(on){
-  document.getElementById('liveDot').className='dot '+(on?'live':'off');
+  const p=document.getElementById('statusPill');
+  p.className='status '+(on?'on':'off');
   document.getElementById('liveText').textContent=on?'ربات فعال':'متوقف';
 }
 async function toggleMaster(on){
   const {error}=await sb.from('settings').update({bot_active:on,updated_at:new Date().toISOString()}).eq('id',1);
   if(error){toast(error.message);return;}
-  setLive(on); toast(on?'ربات فعال شد':'ربات متوقف شد — هیچ پاسخی ارسال نمی‌شود');
+  setLive(on); toast(on?'ربات فعال شد':'ربات متوقف شد');
 }
 async function saveBrain(){
   const num=(id,d)=>parseInt(document.getElementById(id).value)||d;
+  const clamp=(id)=>Math.max(0,Math.min(120,parseInt(document.getElementById(id).value)||0));
   const upd={
     ai_fallback:document.getElementById('aiFallback').checked,
+    ai_first_only:document.getElementById('aiFirstOnly').checked,
+    llm_provider:document.getElementById('llmProvider').value,
+    ollama_url:document.getElementById('ollamaUrl').value.trim()||'https://ollama.com',
+    ollama_model:document.getElementById('ollamaModel').value.trim()||'gpt-oss:20b',
     system_prompt:document.getElementById('sysPrompt').value,
     knowledge_base:document.getElementById('knowledge').value,
     gemini_model:document.getElementById('model').value,
     temperature:parseFloat(document.getElementById('temp').value),
     memory_turns:num('memTurns',6),
     max_reply_chars:Math.min(1000,num('maxChars',800)),
-    reply_delay_min:Math.max(0,Math.min(120,parseInt(document.getElementById('delayMin').value)||0)),
-    reply_delay_max:Math.max(0,Math.min(120,parseInt(document.getElementById('delayMax').value)||0)),
-    comment_delay_min:Math.max(0,Math.min(120,parseInt(document.getElementById('cDelayMin').value)||0)),
-    comment_delay_max:Math.max(0,Math.min(120,parseInt(document.getElementById('cDelayMax').value)||0)),
+    reply_delay_min:clamp('delayMin'), reply_delay_max:clamp('delayMax'),
+    comment_delay_min:clamp('cDelayMin'), comment_delay_max:clamp('cDelayMax'),
     hourly_cap:Math.max(10,num('hourlyCap',150)),
     updated_at:new Date().toISOString(),
   };
   const {error}=await sb.from('settings').update(upd).eq('id',1);
+  if(!error) settings={...settings,...upd};
   toast(error?error.message:'همه تنظیمات ذخیره شد ✓');
+}
+
+// ---------- پست‌ها ----------
+async function fetchMedia(){
+  if(mediaCache) return mediaCache;
+  const fn=localStorage.getItem('mr_fn'),vt=localStorage.getItem('mr_vt');
+  if(!fn||!vt) return null;
+  try{
+    const r=await fetch(`${fn}?admin=${encodeURIComponent(vt)}&action=media`);
+    const d=await r.json();
+    mediaCache=d.data||[];
+    renderRulesFromCache();
+    return mediaCache;
+  }catch(e){ return null; }
+}
+function mediaInfo(id){
+  const m=(mediaCache||[]).find(x=>x.id===id);
+  return m?{img:m.thumbnail_url||m.media_url||'',cap:(m.caption||'بدون کپشن').slice(0,28)}:null;
 }
 
 // ---------- قوانین ----------
 async function loadRules(){
   const {data,error}=await sb.from('rules').select('*').order('created_at');
   if(error) return toast(error.message);
-  renderRules('dm',data.filter(r=>r.kind==='dm'));
-  renderRules('comment',data.filter(r=>r.kind==='comment'));
+  allRules=data;
+  renderRulesFromCache();
 }
-function esc(s){return (s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-
+function renderRulesFromCache(){
+  renderRules('dm',allRules.filter(r=>r.kind==='dm'));
+  renderRules('comment',allRules.filter(r=>r.kind==='comment'));
+  renderWords();
+}
+function respBoxes(cls,values,ph){
+  const items=(values&&values.length?values:['']).map(v=>`
+    <div class="resp-item">
+      <textarea dir="auto" placeholder="${ph}">${esc(v)}</textarea>
+      <button type="button" class="rm" onclick="this.closest('.resp-item').remove()" title="حذف این پاسخ">✕</button>
+    </div>`).join('');
+  return `<div class="${cls}">${items}</div>
+    <button type="button" class="addbtn" style="margin-top:2px" onclick="addRespBox(this,'${cls}','${ph}')">+ افزودن پاسخ دیگر</button>`;
+}
+function addRespBox(btn,cls,ph){
+  const list=btn.closest('.card').querySelector('.'+cls.split(' ')[0]);
+  const div=document.createElement('div');
+  div.className='resp-item';
+  div.innerHTML=`<textarea dir="auto" placeholder="${ph}"></textarea>
+    <button type="button" class="rm" onclick="this.closest('.resp-item').remove()" title="حذف">✕</button>`;
+  list.appendChild(div);
+  div.querySelector('textarea').focus();
+}
 function renderRules(kind,rules){
   const host=document.getElementById(kind==='dm'?'dmRules':'commentRules');
   if(!rules.length){host.innerHTML='<div class="card hint">هنوز قانونی ندارید. یکی بسازید — مثلا کلمه <code>price</code> ← پیام قیمت شما.</div>';return;}
-  host.innerHTML=rules.map(r=>`
+  host.innerHTML=rules.map(r=>{
+    const chips=(r.media_ids||[]).length
+      ? (r.media_ids||[]).map(id=>{const m=mediaInfo(id);
+          return m?`<span class="chip">${m.img?`<img src="${esc(m.img)}" alt="">`:''}<span>${esc(m.cap)}</span></span>`
+                  :`<span class="chip"><span class="ltr" style="font-size:10px">${esc(id.slice(-8))}</span></span>`;}).join('')
+      : '<span class="chip all">🌐 همه پست‌ها و ریلزها</span>';
+    return `
   <div class="card" data-id="${r.id}">
     <div class="row">
       <input type="text" class="grow r-name" value="${esc(r.name)}" dir="auto">
-      <span class="fired" title="این قانون تا حالا ${r.fired} بار فعال شده و پاسخ فرستاده است">اجرا ×${r.fired}</span>
+      <span class="fired" title="این قانون تا حالا ${r.fired} بار پاسخ فرستاده است">اجرا ×${r.fired}</span>
       <label class="switch small" title="روشن/خاموش"><input type="checkbox" class="r-active" ${r.active?'checked':''}><span class="track"></span><span class="knob"></span></label>
     </div>
-    <label class="f">کلمات کلیدی محرک (با ویرگول جدا کنید — فارسی یا English)</label>
+    <label class="f">کلمات کلیدی محرک (با ویرگول جدا کنید)</label>
     <input type="text" class="r-keywords" value="${esc(r.keywords.join(', '))}" dir="auto">
     <div class="row" style="margin-top:8px">
       <select class="r-match" style="width:auto">
@@ -458,12 +592,12 @@ function renderRules(kind,rules){
       </label>
     </div>
     <div class="ai-off ${r.use_ai?'hidden':''}">
-      <label class="f">پاسخ‌ها — هر خط یک پاسخ (هر بار یکی تصادفی ارسال می‌شود)</label>
-      <textarea class="r-responses" rows="3" dir="auto">${esc(r.responses.join('\n'))}</textarea>
+      <label class="f">پاسخ‌ها — هر جعبه یک پیام کامل است (می‌تواند چند خط باشد)؛ هر بار یکی تصادفی ارسال می‌شود</label>
+      ${respBoxes('resp-list',r.responses,'پاسخ شما — چند خطی هم می‌شود…')}
     </div>
     <div class="ai-on ${r.use_ai?'':'hidden'}">
       <label class="f">دستور اضافه برای هوش مصنوعی (اختیاری)</label>
-      <textarea class="r-aiinst" rows="2" dir="auto" placeholder="مثلا: درباره قیمت پرسیده — از پایگاه دانش قیمت بده و لینک فروشگاه را پیشنهاد کن.">${esc(r.ai_instruction)}</textarea>
+      <textarea class="r-aiinst" rows="2" dir="auto">${esc(r.ai_instruction)}</textarea>
     </div>
     <div class="row" style="margin-top:10px">
       <label class="row" style="gap:8px;font-size:13px">
@@ -472,15 +606,18 @@ function renderRules(kind,rules){
       </label>
     </div>
     <div class="follow-box ${r.require_follow?'':'hidden'}">
-      <label class="f">پیام برای غیر فالوورها (بعد از فالو، دوباره پیام بدهند تا پاسخ اصلی را بگیرند)</label>
+      <label class="f">پیام برای غیر فالوورها (با دکمه فالو ارسال می‌شود)</label>
       <textarea class="r-fprompt" rows="2" dir="auto">${esc(r.follow_prompt||'')}</textarea>
+      <label class="f">متن روی دکمه فالو (حداکثر ۲۰ حرف)</label>
+      <input type="text" class="r-fbtn" maxlength="20" value="${esc(r.follow_button_text||'فالو کن ✨')}" dir="auto">
     </div>
     ${kind==='comment'?`
-    <label class="f">پاسخ عمومی زیر کامنت — هر خط یک پاسخ، تصادفی انتخاب می‌شود (خالی = فقط دایرکت)</label>
-    <textarea class="r-public" rows="2" dir="auto" placeholder="برات دایرکت کردم! 📩&#10;چک کن دایرکتتو 😊&#10;فرستادم برات 🙌">${esc(r.public_reply||'')}</textarea>
-    <label class="f">محدود به پست‌های خاص (خالی = همه پست‌ها)</label>
-    <div class="row">
-      <button type="button" onclick="openPostPicker(this)">📌 انتخاب پست‌ها <span class="r-mcount">${(r.media_ids||[]).length?`(${faNum((r.media_ids||[]).length)} پست)`:'(همه)'}</span></button>
+    <label class="f">پاسخ‌های عمومی زیر کامنت — هر جعبه یک پاسخ، تصادفی انتخاب می‌شود (خالی = فقط دایرکت)</label>
+    ${respBoxes('pub-list',r.public_replies&&r.public_replies.length?r.public_replies:(r.public_reply?r.public_reply.split('\n').filter(Boolean):[]),'مثلا: برات دایرکت کردم! 📩')}
+    <label class="f">این قانون برای کدام پست/ریلز است؟</label>
+    <div class="chips">${chips}</div>
+    <div class="row" style="margin-top:8px">
+      <button type="button" onclick="openPostPicker(this)">📌 انتخاب پست‌ها و ریلزها</button>
     </div>
     <input type="hidden" class="r-media" value="${esc((r.media_ids||[]).join(','))}">
     <div class="postpick hidden r-picker"></div>`:''}
@@ -488,7 +625,7 @@ function renderRules(kind,rules){
       <button class="primary" onclick="saveRule('${r.id}','${kind}')">ذخیره قانون</button>
       <button class="danger" onclick="deleteRule('${r.id}')">حذف</button>
     </div>
-  </div>`).join('');
+  </div>`}).join('');
 }
 function toggleAiFields(el){
   const c=el.closest('.card');
@@ -496,29 +633,49 @@ function toggleAiFields(el){
   c.querySelector('.ai-on').classList.toggle('hidden',!el.checked);
 }
 async function addRule(kind){
-  const {error}=await sb.from('rules').insert({kind,name:kind==='dm'?'قانون دایرکت جدید':'قانون کامنت جدید'});
+  const {error}=await sb.from('rules').insert({kind,name:kind==='dm'?'قانون دایرکت جدید':'قانون کامنت جدید',active:false});
   if(error) return toast(error.message);
-  await loadRules(); toast('قانون اضافه شد — پرش کنید و ذخیره بزنید');
+  await loadRules(); toast('قانون اضافه شد (خاموش) — پرش کنید، ذخیره و روشن کنید');
+}
+// جلوگیری از کلمه تکراری با محدوده مشترک
+function findDuplicate(id,kind,keywords,mediaIds){
+  const norm=k=>k.toLowerCase().trim();
+  const mine=new Set(keywords.map(norm));
+  for(const r of allRules){
+    if(r.id===id||r.kind!==kind) continue;
+    const theirs=(r.keywords||[]).map(norm);
+    const shared=theirs.filter(k=>mine.has(k));
+    if(!shared.length) continue;
+    if(kind==='dm') return {rule:r,word:shared[0]};
+    const a=mediaIds||[], b=r.media_ids||[];
+    const overlap = a.length===0 || b.length===0 || a.some(x=>b.includes(x));
+    if(overlap) return {rule:r,word:shared[0]};
+  }
+  return null;
 }
 async function saveRule(id,kind){
   const c=document.querySelector(`.card[data-id="${id}"]`);
+  const boxes=cls=>[...c.querySelectorAll('.'+cls+' textarea')].map(t=>t.value.trim()).filter(Boolean);
   const upd={
     name:c.querySelector('.r-name').value.trim()||'بدون نام',
     keywords:c.querySelector('.r-keywords').value.split(/[,،]/).map(s=>s.trim()).filter(Boolean),
     match_type:c.querySelector('.r-match').value,
     use_ai:c.querySelector('.r-useai').checked,
-    responses:c.querySelector('.r-responses')?.value.split('\n').map(s=>s.trim()).filter(Boolean)??[],
+    responses:boxes('resp-list'),
     ai_instruction:c.querySelector('.r-aiinst')?.value??'',
     require_follow:c.querySelector('.r-follow').checked,
     follow_prompt:c.querySelector('.r-fprompt').value,
+    follow_button_text:c.querySelector('.r-fbtn').value.trim()||'فالو کن ✨',
     active:c.querySelector('.r-active').checked,
   };
   if(kind==='comment'){
-    upd.public_reply=c.querySelector('.r-public').value;
+    upd.public_replies=boxes('pub-list');
     upd.media_ids=c.querySelector('.r-media').value.split(',').map(s=>s.trim()).filter(Boolean);
   }
   if(!upd.keywords.length) return toast('حداقل یک کلمه کلیدی وارد کنید');
   if(!upd.use_ai&&!upd.responses.length) return toast('حداقل یک پاسخ بنویسید یا هوش مصنوعی را روشن کنید');
+  const dup=findDuplicate(id,kind,upd.keywords,upd.media_ids);
+  if(dup) return toast(`⚠️ ذخیره نشد: کلمه «${dup.word}» قبلا در قانون «${dup.rule.name}» با محدوده مشترک استفاده شده — باعث پاسخ‌های تداخلی می‌شود`);
   const {error}=await sb.from('rules').update(upd).eq('id',id);
   toast(error?error.message:'قانون ذخیره شد ✓');
   if(!error) loadRules();
@@ -535,22 +692,15 @@ async function openPostPicker(btn){
   const card=btn.closest('.card');
   const box=card.querySelector('.r-picker');
   if(!box.classList.contains('hidden')){box.classList.add('hidden');return;}
-  const fn=localStorage.getItem('mr_fn'),vt=localStorage.getItem('mr_vt');
-  if(!fn||!vt) return toast('اول در تب «راه‌اندازی» آدرس فانکشن و توکن را وارد کنید');
-  if(!mediaCache){
-    box.innerHTML='<label>در حال دریافت پست‌ها…</label>'; box.classList.remove('hidden');
-    try{
-      const r=await fetch(`${fn}?admin=${encodeURIComponent(vt)}&action=media`);
-      const d=await r.json();
-      mediaCache=d.data||[];
-    }catch(e){box.innerHTML='<label>خطا در دریافت پست‌ها</label>';return;}
-  }
+  box.innerHTML='<label>در حال دریافت پست‌ها…</label>'; box.classList.remove('hidden');
+  const media=await fetchMedia();
+  if(!media){box.innerHTML='<label>اول در تب «راه‌اندازی» آدرس فانکشن و توکن را وارد کنید</label>';return;}
   const selected=new Set(card.querySelector('.r-media').value.split(',').filter(Boolean));
-  box.innerHTML=mediaCache.map(m=>`
-    <label><input type="checkbox" value="${m.id}" ${selected.has(m.id)?'checked':''}
-      onchange="pickPost(this)">
-      <span><span class="ltr" style="color:var(--muted);font-size:10.5px">${(m.timestamp||'').slice(0,10)}</span><br>
-      ${esc((m.caption||'(بدون کپشن)').slice(0,70))}…</span></label>`).join('')
+  box.innerHTML=media.map(m=>`
+    <label><input type="checkbox" value="${m.id}" ${selected.has(m.id)?'checked':''} onchange="pickPost(this)">
+      ${(m.thumbnail_url||m.media_url)?`<img src="${esc(m.thumbnail_url||m.media_url)}" alt="">`:''}
+      <span style="flex:1"><span class="ltr" style="color:var(--muted);font-size:10.5px">${(m.timestamp||'').slice(0,10)} · ${esc(m.media_type||'')}</span><br>
+      ${esc((m.caption||'(بدون کپشن)').slice(0,70))}</span></label>`).join('')
     ||'<label>پستی پیدا نشد</label>';
   box.classList.remove('hidden');
 }
@@ -558,37 +708,88 @@ function pickPost(cb){
   const card=cb.closest('.card');
   const ids=[...card.querySelectorAll('.r-picker input:checked')].map(i=>i.value);
   card.querySelector('.r-media').value=ids.join(',');
-  card.querySelector('.r-mcount').textContent=ids.length?`(${faNum(ids.length)} پست)`:'(همه)';
 }
 
-// ---------- آمار ----------
+// ---------- کلمات ----------
+function renderWords(){
+  const body=document.getElementById('wordsBody'); if(!body) return;
+  const q=(document.getElementById('wordSearch')?.value||'').toLowerCase().trim();
+  const rows=[];
+  const seen={};
+  for(const r of allRules){
+    for(const k of (r.keywords||[])){
+      const key=r.kind+':'+k.toLowerCase().trim();
+      seen[key]=(seen[key]||0)+1;
+      rows.push({k,r});
+    }
+  }
+  body.innerHTML=rows
+    .filter(x=>!q||x.k.toLowerCase().includes(q))
+    .map(({k,r})=>{
+      const dupBadge=seen[r.kind+':'+k.toLowerCase().trim()]>1?' <span class="tag failed">تکراری!</span>':'';
+      const scope=r.kind==='comment'?((r.media_ids||[]).length?faNum((r.media_ids||[]).length)+' پست':'همه پست‌ها'):'—';
+      return `<tr>
+        <td dir="auto"><strong>${esc(k)}</strong>${dupBadge}</td>
+        <td>${r.kind==='dm'?'دایرکت':'کامنت'}</td>
+        <td dir="auto">${esc(r.name)}</td>
+        <td>${scope}</td>
+        <td class="mono">×${r.fired}</td>
+        <td>${r.active?'<span class="tag sent">فعال</span>':'<span class="tag">خاموش</span>'}</td>
+      </tr>`;}).join('')
+    ||'<tr><td colspan="6" class="hint" style="padding:20px">کلمه‌ای ثبت نشده.</td></tr>';
+}
+
+// ---------- آمار زنده ----------
 async function loadAnalytics(){
   const now=Date.now();
   const iso=ms=>new Date(now-ms).toISOString();
   const count=async q=>{const {count:c}=await q;return c??0;};
   const base=()=>sb.from('message_log').select('id',{count:'exact',head:true}).eq('status','sent');
-  const [today,week,total,ai,dm,cm,hour]=await Promise.all([
-    count(base().gte('at',new Date(new Date().setHours(0,0,0,0)).toISOString())),
+  const todayStart=new Date(new Date().setHours(0,0,0,0)).toISOString();
+  const [today,week,total,ai,dm,cm,hour,gated]=await Promise.all([
+    count(base().gte('at',todayStart)),
     count(base().gte('at',iso(7*864e5))),
     count(base()),
     count(base().eq('source','ai')),
     count(base().eq('kind','dm')),
     count(base().eq('kind','comment')),
     count(base().gte('at',iso(36e5))),
+    count(sb.from('message_log').select('id',{count:'exact',head:true}).eq('status','follow-gated')),
   ]);
+  // تبدیل قفل فالو: کسانی که بعد از قفل، پاسخ اصلی گرفتند
+  const {data:gRows}=await sb.from('message_log').select('sender_id,at,status').in('status',['follow-gated','sent']).order('at').limit(5000);
+  const gatedAt={}; const converted=new Set();
+  (gRows||[]).forEach(r=>{
+    if(r.status==='follow-gated') gatedAt[r.sender_id]=r.at;
+    else if(gatedAt[r.sender_id]&&r.at>gatedAt[r.sender_id]) converted.add(r.sender_id);
+  });
   const set=(id,v)=>document.getElementById(id).textContent=faNum(v);
-  set('stToday',today);set('stWeek',week);set('stTotal',total);set('stAi',ai);set('stDm',dm);set('stCm',cm);
+  set('stToday',today);set('stWeek',week);set('stTotal',total);set('stAi',ai);
+  set('stDm',dm);set('stCm',cm);set('stGated',gated);set('stConv',converted.size);
   const cap=settings?.hourly_cap??150;
   document.getElementById('capText').textContent=`${hour} / ${cap}`;
   document.getElementById('capBar').style.width=Math.min(100,hour/cap*100)+'%';
 
+  // نمودار ساعتی امروز
+  const {data:tRows}=await sb.from('message_log').select('at').eq('status','sent').gte('at',todayStart).limit(5000);
+  const hours=Array(24).fill(0);
+  (tRows||[]).forEach(r=>{hours[new Date(r.at).getHours()]++;});
+  const hmax=Math.max(1,...hours);
+  const nowH=new Date().getHours();
+  document.getElementById('hourBars').innerHTML=hours.map((v,h)=>`
+    <div class="bcol ${h===nowH?'today':''}" title="${v} پاسخ"><i style="height:${Math.round(v/hmax*100)}%"></i>${h%4===0?`<span>${h}</span>`:'<span></span>'}</div>`).join('');
+
+  // نمودار ۷ روز
   const {data:rows}=await sb.from('message_log').select('at').eq('status','sent').gte('at',iso(7*864e5)).limit(5000);
   const days={},labels=[];
-  for(let i=6;i>=0;i--){const d=new Date(now-i*864e5);const k=d.toISOString().slice(0,10);days[k]=0;labels.push(k);}
+  for(let i=6;i>=0;i--){const k=new Date(now-i*864e5).toISOString().slice(0,10);days[k]=0;labels.push(k);}
   (rows||[]).forEach(r=>{const k=r.at.slice(0,10);if(k in days)days[k]++;});
   const max=Math.max(1,...Object.values(days));
-  document.getElementById('weekBars').innerHTML=labels.map(k=>`
-    <div class="bcol"><i style="height:${Math.round(days[k]/max*100)}%"></i><span>${k.slice(5)}</span></div>`).join('');
+  document.getElementById('weekBars').innerHTML=labels.map((k,i)=>`
+    <div class="bcol ${i===6?'today':''}" title="${days[k]} پاسخ"><i style="height:${Math.round(days[k]/max*100)}%"></i><span>${k.slice(5)}</span></div>`).join('');
+
+  clearTimeout(statTimer);
+  statTimer=setTimeout(()=>{if(!document.getElementById('view-analytics').classList.contains('hidden'))loadAnalytics();},30000);
 }
 
 // ---------- فعالیت و بی‌صدا ----------
@@ -607,8 +808,8 @@ async function loadLog(){
       <td dir="auto">${esc(r.reply||'')}</td>
       <td>${r.source?`<span class="tag ${r.source==='ai'?'ai':''}">${esc(r.source)}</span>`:''}</td>
       <td><span class="tag ${r.status==='sent'?'sent':(r.status==='failed'?'failed':'')}" title="${esc(r.error||'')}">${esc(r.status||'')}</span></td>
-      <td>${r.sender_id?`<button class="mutebtn" title="بی‌صدا کردن این شخص" onclick="muteSender('${esc(r.sender_id)}','${esc(r.sender_name||'')}')">🔇</button>`:''}</td>
-    </tr>`).join('')||'<tr><td colspan="8" class="hint" style="padding:20px">هنوز چیزی نیست. هر رویدادی اینجا ثبت می‌شود.</td></tr>';
+      <td>${r.sender_id?`<button class="mutebtn" title="بی‌صدا کردن" onclick="muteSender('${esc(r.sender_id)}','${esc(r.sender_name||'')}')">🔇</button>`:''}</td>
+    </tr>`).join('')||'<tr><td colspan="8" class="hint" style="padding:20px">هنوز چیزی نیست.</td></tr>';
   clearTimeout(logTimer);
   logTimer=setTimeout(()=>{if(!document.getElementById('view-activity').classList.contains('hidden'))loadLog();},20000);
 }
@@ -618,8 +819,7 @@ async function muteSender(id,name){
   const {error}=await sb.from('muted').upsert({sender_id:id,note:name||''});
   if(error) return toast(error.message);
   document.getElementById('muteId').value='';
-  toast('بی‌صدا شد — ربات دیگر به این شخص پاسخ نمی‌دهد');
-  loadMuted();
+  toast('بی‌صدا شد'); loadMuted();
 }
 async function loadMuted(){
   const {data}=await sb.from('muted').select('*').order('created_at',{ascending:false});
@@ -654,17 +854,18 @@ async function adminCall(action){
 
 // ---------- رابط ----------
 function showTab(t){
-  for(const v of ['rules','brain','analytics','activity','setup']){
+  for(const v of ['rules','brain','analytics','words','activity','setup']){
     document.getElementById('view-'+v).classList.toggle('hidden',v!==t);
     document.getElementById('tab-'+v).classList.toggle('on',v===t);
   }
   if(t==='activity')loadLog();
   if(t==='analytics')loadAnalytics();
+  if(t==='words')renderWords();
 }
 function toast(m){
   const el=document.getElementById('toast');
   el.textContent=m; el.classList.add('show');
-  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3200);
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),4200);
 }
 </script>
 </body>
