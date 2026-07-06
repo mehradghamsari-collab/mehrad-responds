@@ -165,6 +165,14 @@
   .fnode.hl{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft), 0 6px 18px rgba(64,86,214,.2)}
   .fedit{position:absolute;top:6px;left:8px;font-size:11px;opacity:.55;cursor:pointer;transition:opacity .2s,transform .15s}
   .fedit:hover{opacity:1;transform:scale(1.15)}
+  .fplus{position:absolute;bottom:-11px;left:50%;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;
+    background:var(--accent);color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;box-shadow:0 2px 8px rgba(64,86,214,.35);opacity:0;transition:opacity .2s,transform .15s;z-index:3;line-height:1}
+  .fnode:hover .fplus{opacity:1}
+  .fplus:hover{transform:translateX(-50%) scale(1.2)}
+  @media (hover:none){.fplus{opacity:.9}}
+  .fnode.off{opacity:.5;border-style:dashed}
+  .maplbl{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
 
   @keyframes flash{0%,60%{box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}100%{box-shadow:var(--sh)}}
   .livebadge .dot{animation:pulse 1.8s infinite}
@@ -271,10 +279,18 @@
       </select>
     </div>
     <div id="dmWrap" style="margin-top:12px">
+      <div class="card">
+        <div class="maplbl">🗺️ نقشه قوانین دایرکت — کلمه محرک ← پاسخ · روی هر جعبه بزنید تا مسیرش روشن شود</div>
+        <div class="fwrap" id="ruleMapDm"></div>
+      </div>
       <div id="dmRules"></div>
       <button class="fullm addbtn" onclick="addRule('dm')">+ افزودن قانون دایرکت</button>
     </div>
     <div id="commentWrap" class="hidden" style="margin-top:12px">
+      <div class="card">
+        <div class="maplbl">🗺️ نقشه قوانین کامنت — کلمه محرک ← پاسخ ← پست و کامنت عمومی</div>
+        <div class="fwrap" id="ruleMapCm"></div>
+      </div>
       <div id="commentRules"></div>
       <button class="fullm addbtn" onclick="addRule('comment')">+ افزودن قانون کامنت</button>
     </div>
@@ -663,6 +679,7 @@ function setRuleTab(t){
   document.getElementById('seg-comment').classList.toggle('on',t==='comment');
   document.getElementById('dmWrap').classList.toggle('hidden',t!=='dm');
   document.getElementById('commentWrap').classList.toggle('hidden',t!=='comment');
+  requestAnimationFrame(drawRuleMaps);
 }
 function renderRulesFromCache(){
   const q=(document.getElementById('ruleSearch')?.value||'').toLowerCase().trim();
@@ -679,7 +696,75 @@ function renderRulesFromCache(){
   document.getElementById('cntCm').textContent=`${cm.filter(r=>r.active).length}/${cm.length}`;
   renderRules('dm',prep(dm));
   renderRules('comment',prep(cm));
+  renderRuleMaps();
   renderWords();
+}
+function ruleMapHost(kind){return document.getElementById(kind==='dm'?'ruleMapDm':'ruleMapCm');}
+function renderRuleMaps(){
+  for(const kind of ['dm','comment']){
+    const host=ruleMapHost(kind); if(!host) continue;
+    const rules=allRules.filter(r=>r.kind===kind);
+    if(!rules.length){host.innerHTML='<div class="hint">هنوز قانونی نیست.</div>';host._edges=null;continue;}
+    const kwNode=r=>`<div class="fnode entry ${r.active?'':'off'}" data-rnode="kw-${r.id}" onclick="selectRuleRoute('${kind}','${r.id}')">
+        <span class="fedit" title="ویرایش قانون" onclick="event.stopPropagation();openRule('${kind}','${r.id}')">✏️</span>
+        <b dir="auto">${esc(r.name)}</b>
+        <div class="ftags">${(r.keywords||[]).slice(0,4).map(k=>`<i dir="auto">${esc(k)}</i>`).join('')}${(r.keywords||[]).length>4?'<i>…</i>':''}</div>
+      </div>`;
+    const rsNode=r=>{const snippet=r.use_ai?(r.ai_instruction||'پاسخ هوشمند'):(r.responses?.[0]||'—');
+      return `<div class="fnode ${r.active?'':'off'} ${kind==='dm'?'end':''}" data-rnode="rs-${r.id}" onclick="selectRuleRoute('${kind}','${r.id}')">
+        <span class="fedit" onclick="event.stopPropagation();openRule('${kind}','${r.id}')">✏️</span>
+        <b>${r.use_ai?'🤖 هوش مصنوعی':'✉️ '+faNum((r.responses||[]).length)+' پاسخ'} ${r.require_follow?'🔒':''}</b>
+        <small dir="auto">${esc(String(snippet).replace(/\n/g,' ').slice(0,34))}</small>
+      </div>`;};
+    const pbNode=r=>{const pubs=(r.public_replies&&r.public_replies.length)?r.public_replies:(r.public_reply?[r.public_reply]:[]);
+      const scope=(r.media_ids||[]).length?faNum(r.media_ids.length)+' پست منتخب':'همه پست‌ها';
+      return `<div class="fnode end ${r.active?'':'off'}" data-rnode="pb-${r.id}" onclick="selectRuleRoute('${kind}','${r.id}')">
+        <b>📍 ${scope}</b>
+        <small dir="auto">${pubs.length?'💬 '+faNum(pubs.length)+' کامنت عمومی':'بدون کامنت عمومی'}</small>
+      </div>`;};
+    host.innerHTML=`<svg class="flines"></svg><div class="fcols">
+      <div class="fcol"><div class="flvl">کلمه محرک</div>${rules.map(kwNode).join('')}</div>
+      <div class="fcol"><div class="flvl">پاسخ در دایرکت</div>${rules.map(rsNode).join('')}</div>
+      ${kind==='comment'?`<div class="fcol"><div class="flvl">پست و کامنت عمومی</div>${rules.map(pbNode).join('')}</div>`:''}
+    </div>`;
+    const edges=[];
+    for(const r of rules){
+      edges.push({from:`kw-${r.id}`,to:`rs-${r.id}`,ref:false});
+      if(kind==='comment') edges.push({from:`rs-${r.id}`,to:`pb-${r.id}`,ref:false});
+    }
+    host._edges=edges; host._sel=null; host._chain=[];
+  }
+  requestAnimationFrame(drawRuleMaps);
+  setTimeout(drawRuleMaps,350);
+}
+function drawRuleMaps(){
+  paintEdges(document.getElementById('ruleMapDm'),'rnode');
+  paintEdges(document.getElementById('ruleMapCm'),'rnode');
+}
+function selectRuleRoute(kind,id){
+  const host=ruleMapHost(kind); if(!host) return;
+  if(host._sel===id){
+    host._sel=null; host._chain=[];
+    host.querySelectorAll('[data-rnode]').forEach(el=>el.classList.remove('dim','hl'));
+    paintEdges(host,'rnode'); return;
+  }
+  host._sel=id;
+  host._chain=[`kw-${id}`,`rs-${id}`,...(kind==='comment'?[`pb-${id}`]:[])];
+  const inChain=new Set(host._chain);
+  host.querySelectorAll('[data-rnode]').forEach(el=>{
+    const on=inChain.has(el.dataset.rnode);
+    el.classList.toggle('hl',on); el.classList.toggle('dim',!on);
+  });
+  paintEdges(host,'rnode');
+}
+function openRule(kind,id){
+  setRuleTab(kind);
+  expandedRules.add(id);
+  renderRulesFromCache();
+  requestAnimationFrame(()=>{
+    const el=document.querySelector(`.card[data-id="${id}"]`);
+    if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');}
+  });
 }
 function toggleRuleCard(head){
   const card=head.closest('.card');
@@ -1073,7 +1158,7 @@ function renderFlowNodes(){
     </div>
     <label class="f">متن پیام / سوال</label>
     <textarea class="n-msg" rows="3" dir="auto" placeholder="مثلا: سلام! 👋 دنبال چه چیزی هستی؟">${esc(n.message||'')}</textarea>
-    <label class="f">دکمه‌ها (حداکثر ۱۳ عدد — بدون دکمه = پیام پایانی)</label>
+    <label class="f">دکمه‌ها (حداکثر ۱۱ عدد — بدون دکمه = پیام پایانی)</label>
     <div class="opt-list">${rows}</div>
     <button type="button" class="addbtn" style="margin-top:2px" onclick="addFlowOption(this)">+ افزودن دکمه</button>
     <div class="row" style="margin-top:14px">
@@ -1084,7 +1169,7 @@ function renderFlowNodes(){
 }
 function addFlowOption(btn){
   const list=btn.closest('.card').querySelector('.opt-list');
-  if(list.children.length>=13) return toast('اینستاگرام حداکثر ۱۳ دکمه اجازه می‌دهد');
+  if(list.children.length>=11) return toast('حداکثر ۱۱ دکمه — ۲ جای دیگر برای «بازگشت» و «منوی اصلی» رزرو است');
   const div=document.createElement('div');div.className='resp-item';
   div.innerHTML=`<input type="text" class="o-label" dir="auto" maxlength="20" style="flex:1" placeholder="متن دکمه (تا ۲۰ حرف)">
     <select class="o-next" style="flex:1.4">${nextSelect('')}</select>
@@ -1170,6 +1255,7 @@ function renderFlowDiagram(){
   const card=(id)=>{const n=byId[id];const opts=(n.options||[]).filter(o=>o.label);
     return `<div class="fnode ${id===entry?'entry':''} ${opts.length?'':'end'}" data-fnode="${id}" onclick="selectRoute('${id}')">
       <span class="fedit" title="ویرایش این مرحله" onclick="event.stopPropagation();goToNode('${id}')">✏️</span>
+      <span class="fplus" title="افزودن شاخه جدید به این مرحله" onclick="event.stopPropagation();addBranch('${id}')">+</span>
       <b>${esc(n.name)}</b><small>${esc((n.message||'').replace(/\n/g,' ').slice(0,34))||'—'}</small>
       ${opts.length?`<div class="ftags">${opts.slice(0,4).map(o=>`<i>${esc(o.label)}</i>`).join('')}${opts.length>4?'<i>…</i>':''}</div>`:''}
     </div>`;};
@@ -1200,14 +1286,36 @@ function selectRoute(id){
   host._chain=chain;
   drawFlowEdges();
 }
-function drawFlowEdges(){
-  const host=document.getElementById('flowMap'); if(!host||!host._edges) return;
+// افزودن شاخه مستقیم از روی نقشه: دکمه + مرحله جدید در یک کلیک
+async function addBranch(parentId){
+  const parent=flowNodes.find(n=>n.id===parentId); if(!parent) return;
+  const opts=Array.isArray(parent.options)?parent.options:[];
+  if(opts.length>=11) return toast('این مرحله به سقف ۱۱ دکمه رسیده است');
+  let label=prompt('متن دکمه جدید (حداکثر ۲۰ حرف):');
+  if(!label||!label.trim()) return;
+  label=label.trim().slice(0,20);
+  const {data:node,error}=await sb.from('flow_nodes').insert({name:label,message:''}).select().single();
+  if(error) return toast(error.message);
+  const newOpts=[...opts,{label,next:node.id}];
+  const {error:e2}=await sb.from('flow_nodes').update({options:newOpts}).eq('id',parentId);
+  if(e2) return toast(e2.message);
+  parent.options=newOpts; flowNodes.push(node);
+  renderFlowEntrySelect(); renderFlowNodes(); renderFlowDiagram();
+  requestAnimationFrame(()=>{
+    const el=document.querySelector(`[data-fnode="${node.id}"]`);
+    if(el){el.classList.add('flash');el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}
+  });
+  toast('شاخه ساخته شد ✓ — روی ✏️ مرحله جدید بزنید و متنش را بنویسید');
+}
+function drawFlowEdges(){ paintEdges(document.getElementById('flowMap'),'fnode'); }
+function paintEdges(host,attr){
+  if(!host||!host._edges) return;
   const svg=host.querySelector('svg.flines'); if(!svg) return;
   const w=host.scrollWidth,h=host.scrollHeight;
   svg.setAttribute('width',w);svg.setAttribute('height',h);
   svg.style.width=w+'px';svg.style.height=h+'px';
   // مختصات بر اساس offset — مستقل از اسکرول و RTL، روی موبایل هم دقیق
-  const pos=id=>{const el=host.querySelector(`[data-fnode="${id}"]`);if(!el)return null;
+  const pos=id=>{const el=host.querySelector(`[data-${attr}="${id}"]`);if(!el)return null;
     let x=0,y=0,p=el;
     while(p&&p!==host){x+=p.offsetLeft;y+=p.offsetTop;p=p.offsetParent;}
     return {l:x, r:x+el.offsetWidth, y:y+el.offsetHeight/2};};
@@ -1226,7 +1334,10 @@ function drawFlowEdges(){
       <circle cx="${x2}" cy="${y2}" r="${onRoute?4.5:3.5}" fill="${col}" opacity="${op}"/>`;
   }).join('');
 }
-window.addEventListener('resize',()=>{if(!document.getElementById('view-flow').classList.contains('hidden'))drawFlowEdges();});
+window.addEventListener('resize',()=>{
+  if(!document.getElementById('view-flow').classList.contains('hidden'))drawFlowEdges();
+  if(!document.getElementById('view-rules').classList.contains('hidden'))drawRuleMaps();
+});
 function goToNode(id){
   const el=document.querySelector(`.card[data-nid="${id}"]`);
   if(!el) return;
@@ -1258,6 +1369,7 @@ function showTab(t){
     document.getElementById('tab-'+v).classList.toggle('on',v===t);
   }
   if(t==='activity')loadLog();
+  if(t==='rules')requestAnimationFrame(drawRuleMaps);
   if(t==='analytics')loadAnalytics();
   if(t==='words')renderWords();
   if(t==='flow')loadFlow();
