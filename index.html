@@ -173,6 +173,14 @@
   @media (hover:none){.fplus{opacity:.9}}
   .fnode.off{opacity:.5;border-style:dashed}
   .maplbl{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .fout{position:absolute;left:-8px;top:50%;transform:translateY(-50%);width:16px;height:16px;border-radius:50%;
+    background:var(--card);border:2.5px solid var(--accent);cursor:crosshair;z-index:4;touch-action:none;
+    transition:transform .15s, box-shadow .2s}
+  .fout:hover{transform:translateY(-50%) scale(1.35);box-shadow:0 0 0 4px var(--accent-soft)}
+  .fnode.droptarget{border-color:var(--live);box-shadow:0 0 0 3px var(--live-soft)}
+  .edgehit{cursor:pointer}
+  .linegrid{stroke:var(--line);stroke-width:1}
+  .linelbl{font-size:10px;fill:var(--muted);font-family:var(--mono)}
 
   @keyframes flash{0%,60%{box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}100%{box-shadow:var(--sh)}}
   .livebadge .dot{animation:pulse 1.8s infinite}
@@ -414,6 +422,8 @@
         <strong>نمودار بازه دلخواه <span class="hint" style="display:inline">— بازه به ۱۰ ستون مساوی تقسیم می‌شود</span></strong>
       </div>
       <div class="row" style="margin-top:10px">
+        <div class="grow"><label class="f" style="margin-top:0">قانون</label>
+          <select id="rangeRule" onchange="loadRangeChart()"><option value="">همه پاسخ‌ها</option></select></div>
         <div class="grow"><label class="f" style="margin-top:0">از</label><input type="datetime-local" class="ltr" id="rangeFrom"></div>
         <div class="grow"><label class="f" style="margin-top:0">تا</label><input type="datetime-local" class="ltr" id="rangeTo"></div>
       </div>
@@ -431,7 +441,7 @@
     </div>
     <div class="card">
       <strong>امروز، ساعت به ساعت</strong>
-      <div class="bars" id="hourBars"></div>
+      <div class="ltr" style="width:100%"><svg id="hourLine" viewBox="0 0 720 180" style="width:100%;height:auto;display:block"></svg></div>
     </div>
     <div class="card">
       <strong>۷ روز گذشته</strong>
@@ -471,6 +481,7 @@
     <h2>نقشه مسیر <small>نمای کلی از نقطه شروع تا پیام‌های پایانی — روی هر جعبه بزنید تا مستقیم به ویرایشش بروید</small></h2>
     <div class="card">
       <div class="fwrap" id="flowMap"><div class="hint">بعد از ساخت مراحل و انتخاب نقطه شروع، نقشه اینجا رسم می‌شود.</div></div>
+      <div class="hint">⚬ حلقه کنار هر جعبه را بگیرید و روی جعبه مقصد رها کنید تا وصل شوند · روی هر <b>خط</b> بزنید تا مرحله‌ای میان آن دو اضافه شود · + شاخه جدید می‌سازد · ✏️ ویرایش</div>
     </div>
 
     <h2>پیام‌ها و سوال‌ها <small>هر کارت یک مرحله است؛ دکمه‌هایش به مرحله بعد اشاره می‌کنند. کارت بدون دکمه = پیام پایانی</small></h2>
@@ -1024,14 +1035,11 @@ async function loadAnalytics(){
   document.getElementById('capText').textContent=`${hour} / ${cap}`;
   document.getElementById('capBar').style.width=Math.min(100,hour/cap*100)+'%';
 
-  // نمودار ساعتی امروز
+  // نمودار خطی ساعتی امروز
   const {data:tRows}=await sb.from('message_log').select('at').eq('status','sent').gte('at',todayStart).limit(5000);
   const hours=Array(24).fill(0);
   (tRows||[]).forEach(r=>{hours[new Date(r.at).getHours()]++;});
-  const hmax=Math.max(1,...hours);
-  const nowH=new Date().getHours();
-  document.getElementById('hourBars').innerHTML=hours.map((v,h)=>`
-    <div class="bcol ${h===nowH?'today':''}" title="${v} پاسخ"><b class="bval">${v?faNum(v):''}</b><i style="height:${Math.round(v/hmax*100)}%"></i>${h%4===0?`<span>${h}</span>`:'<span></span>'}</div>`).join('');
+  drawHourLine(hours);
 
   // نمودار ۷ روز
   const {data:rows}=await sb.from('message_log').select('at').eq('status','sent').gte('at',iso(7*864e5)).limit(5000);
@@ -1046,6 +1054,36 @@ async function loadAnalytics(){
   statTimer=setTimeout(()=>{if(!document.getElementById('view-analytics').classList.contains('hidden'))loadAnalytics();},30000);
 }
 
+// ---------- نمودار خطی ساعتی ----------
+function drawHourLine(hours){
+  const svg=document.getElementById('hourLine'); if(!svg) return;
+  const W=720,H=180,L=34,R=10,T=16,B=28;
+  const iw=W-L-R, ih=H-T-B;
+  const max=Math.max(1,...hours);
+  const X=i=>L+i*(iw/23), Y=v=>T+ih-(v/max)*ih;
+  const nowH=new Date().getHours();
+  // grid
+  let g='';
+  for(const gv of [0,Math.ceil(max/2),max]){
+    g+=`<line class="linegrid" x1="${L}" y1="${Y(gv)}" x2="${W-R}" y2="${Y(gv)}" stroke-dasharray="3 4"/>
+        <text class="linelbl" x="${L-6}" y="${Y(gv)+3}" text-anchor="end">${gv}</text>`;
+  }
+  for(let h=0;h<24;h+=4) g+=`<text class="linelbl" x="${X(h)}" y="${H-8}" text-anchor="middle">${String(h).padStart(2,'0')}</text>`;
+  // smooth path
+  const pts=hours.map((v,i)=>[X(i),Y(v)]);
+  let d=`M ${pts[0][0]} ${pts[0][1]}`;
+  for(let i=1;i<pts.length;i++){
+    const [x0,y0]=pts[i-1],[x1,y1]=pts[i],mx=(x0+x1)/2;
+    d+=` C ${mx} ${y0}, ${mx} ${y1}, ${x1} ${y1}`;
+  }
+  const area=d+` L ${X(23)} ${T+ih} L ${X(0)} ${T+ih} Z`;
+  const dots=hours.map((v,i)=>v?`<circle cx="${X(i)}" cy="${Y(v)}" r="${i===nowH?5:3.5}" fill="${i===nowH?'var(--live)':'var(--accent)'}"><title>${String(i).padStart(2,'0')}:00 — ${v} پاسخ</title></circle>
+    <text class="linelbl" x="${X(i)}" y="${Y(v)-9}" text-anchor="middle" style="font-weight:700;fill:var(--ink)">${v}</text>`:'').join('');
+  svg.innerHTML=`<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--accent)" stop-opacity=".18"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+    ${g}<path d="${area}" fill="url(#ag)"/><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>${dots}`;
+}
+
 // ---------- نمودار بازه دلخواه ----------
 function toLocalInput(d){const p=n=>String(n).padStart(2,'0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;}
@@ -1055,13 +1093,24 @@ function rangePreset(hours){
   document.getElementById('rangeTo').value=toLocalInput(to);
   loadRangeChart();
 }
+function fillRangeRules(){
+  const sel=document.getElementById('rangeRule'); if(!sel) return;
+  const cur=sel.value;
+  const opt=r=>`<option value="${r.id}" ${cur===r.id?'selected':''}>${r.kind==='dm'?'📥':'💬'} ${esc(r.name)}</option>`;
+  sel.innerHTML='<option value="">همه پاسخ‌ها</option>'
+    +'<optgroup label="قوانین دایرکت">'+allRules.filter(r=>r.kind==='dm').map(opt).join('')+'</optgroup>'
+    +'<optgroup label="قوانین کامنت">'+allRules.filter(r=>r.kind==='comment').map(opt).join('')+'</optgroup>';
+}
 async function loadRangeChart(){
   const fv=document.getElementById('rangeFrom').value, tv=document.getElementById('rangeTo').value;
   if(!fv||!tv) return rangePreset(24);
   const from=new Date(fv), to=new Date(tv);
   if(!(from<to)) return toast('بازه نامعتبر است — «از» باید قبل از «تا» باشد');
-  const {data,error}=await sb.from('message_log').select('at').eq('status','sent')
+  const rid=document.getElementById('rangeRule').value;
+  let q=sb.from('message_log').select('at').eq('status','sent')
     .gte('at',from.toISOString()).lte('at',to.toISOString()).limit(10000);
+  if(rid) q=q.eq('matched_rule',rid);
+  const {data,error}=await q;
   if(error) return toast(error.message);
   const span=to-from, step=span/10, counts=Array(10).fill(0);
   (data||[]).forEach(r=>{const i=Math.min(9,Math.floor((new Date(r.at)-from)/step));counts[i]++;});
@@ -1256,6 +1305,7 @@ function renderFlowDiagram(){
     return `<div class="fnode ${id===entry?'entry':''} ${opts.length?'':'end'}" data-fnode="${id}" onclick="selectRoute('${id}')">
       <span class="fedit" title="ویرایش این مرحله" onclick="event.stopPropagation();goToNode('${id}')">✏️</span>
       <span class="fplus" title="افزودن شاخه جدید به این مرحله" onclick="event.stopPropagation();addBranch('${id}')">+</span>
+      <span class="fout" title="بگیرید و روی مرحله مقصد رها کنید تا وصل شود" data-out="${id}"></span>
       <b>${esc(n.name)}</b><small>${esc((n.message||'').replace(/\n/g,' ').slice(0,34))||'—'}</small>
       ${opts.length?`<div class="ftags">${opts.slice(0,4).map(o=>`<i>${esc(o.label)}</i>`).join('')}${opts.length>4?'<i>…</i>':''}</div>`:''}
     </div>`;};
@@ -1321,6 +1371,7 @@ function paintEdges(host,attr){
     return {l:x, r:x+el.offsetWidth, y:y+el.offsetHeight/2};};
   const chain=host._sel?(host._chain||[]):[];
   const chainEdge=(f,t)=>{const i=chain.indexOf(f);return i>-1&&chain[i+1]===t;};
+  const interactive=host.id==='flowMap';
   svg.innerHTML=host._edges.map(e=>{
     const a=pos(e.from),b=pos(e.to); if(!a||!b) return '';
     const x1=a.l-2, y1=a.y, x2=b.r+2, y2=b.y, mx=(x1+x2)/2;
@@ -1328,16 +1379,95 @@ function paintEdges(host,attr){
     const col=onRoute?'var(--accent)':(e.ref?'var(--accent)':'#C6C9D6');
     const wdt=onRoute?3.5:2;
     const op=host._sel&&!onRoute?.18:(e.ref?.7:1);
-    return `<path d="M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}"
-      fill="none" stroke="${col}" stroke-width="${wdt}" opacity="${op}"
+    const dd=`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+    return `<path d="${dd}" fill="none" stroke="${col}" stroke-width="${wdt}" opacity="${op}"
       ${e.ref&&!onRoute?'stroke-dasharray="5 5"':''} />
-      <circle cx="${x2}" cy="${y2}" r="${onRoute?4.5:3.5}" fill="${col}" opacity="${op}"/>`;
+      <circle cx="${x2}" cy="${y2}" r="${onRoute?4.5:3.5}" fill="${col}" opacity="${op}"/>
+      ${interactive&&!e.ref?`<path class="edgehit" d="${dd}" fill="none" stroke="transparent" stroke-width="18"
+        style="pointer-events:stroke" onclick="insertBetween('${e.from}','${e.to}')"><title>افزودن مرحله میانی روی این خط</title></path>`:''}`;
   }).join('');
 }
 window.addEventListener('resize',()=>{
   if(!document.getElementById('view-flow').classList.contains('hidden'))drawFlowEdges();
   if(!document.getElementById('view-rules').classList.contains('hidden'))drawRuleMaps();
 });
+
+// ---------- اتصال با کشیدن فلش ----------
+let dragSrc=null;
+function hostContentXY(host,e){
+  const r=host.getBoundingClientRect();
+  let sx=host.scrollLeft; if(sx<0) sx=host.scrollWidth-host.clientWidth+sx; // RTL نرمال‌سازی
+  return {x:e.clientX-r.left+sx, y:e.clientY-r.top+host.scrollTop};
+}
+function initDragConnect(){
+  const host=document.getElementById('flowMap'); if(!host||host._dragInit) return;
+  host._dragInit=true;
+  host.addEventListener('pointerdown',e=>{
+    const h=e.target.closest('.fout'); if(!h) return;
+    e.preventDefault(); e.stopPropagation();
+    dragSrc=h.dataset.out;
+  });
+  document.addEventListener('pointermove',e=>{
+    if(!dragSrc) return;
+    e.preventDefault();
+    const svg=host.querySelector('svg.flines'); if(!svg) return;
+    const src=host.querySelector(`[data-fnode="${dragSrc}"]`); if(!src) return;
+    let x0=0,y0=0,p=src; while(p&&p!==host){x0+=p.offsetLeft;y0+=p.offsetTop;p=p.offsetParent;}
+    const sxy={x:x0-2,y:y0+src.offsetHeight/2};
+    const t=hostContentXY(host,e);
+    let temp=svg.querySelector('#dragline');
+    if(!temp){svg.insertAdjacentHTML('beforeend','<path id="dragline" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="6 5"/>');temp=svg.querySelector('#dragline');}
+    const mx=(sxy.x+t.x)/2;
+    temp.setAttribute('d',`M ${sxy.x} ${sxy.y} C ${mx} ${sxy.y}, ${mx} ${t.y}, ${t.x} ${t.y}`);
+    document.querySelectorAll('#flowMap .fnode.droptarget').forEach(el=>el.classList.remove('droptarget'));
+    const over=document.elementFromPoint(e.clientX,e.clientY)?.closest('#flowMap [data-fnode]');
+    if(over&&over.dataset.fnode!==dragSrc) over.classList.add('droptarget');
+  },{passive:false});
+  document.addEventListener('pointerup',async e=>{
+    if(!dragSrc) return;
+    const srcId=dragSrc; dragSrc=null;
+    host.querySelector('#dragline')?.remove();
+    document.querySelectorAll('#flowMap .fnode.droptarget').forEach(el=>el.classList.remove('droptarget'));
+    const over=document.elementFromPoint(e.clientX,e.clientY)?.closest('#flowMap [data-fnode]');
+    if(!over) return;
+    const toId=over.dataset.fnode;
+    if(toId===srcId) return toast('مرحله را نمی‌توان به خودش وصل کرد');
+    const srcNode=flowNodes.find(n=>n.id===srcId); if(!srcNode) return;
+    const opts=Array.isArray(srcNode.options)?srcNode.options:[];
+    if(opts.some(o=>o.next===toId)) return toast('این دو مرحله از قبل به هم وصل هستند');
+    if(opts.length>=11) return toast('این مرحله به سقف ۱۱ دکمه رسیده است');
+    let label=prompt('متن دکمه برای این اتصال (حداکثر ۲۰ حرف):');
+    if(!label||!label.trim()) return;
+    label=label.trim().slice(0,20);
+    const newOpts=[...opts,{label,next:toId}];
+    const {error}=await sb.from('flow_nodes').update({options:newOpts}).eq('id',srcId);
+    if(error) return toast(error.message);
+    srcNode.options=newOpts;
+    renderFlowNodes(); renderFlowDiagram();
+    toast('وصل شد ✓');
+  });
+}
+
+// ---------- افزودن مرحله میانی روی خط ----------
+async function insertBetween(fromId,toId){
+  const parent=flowNodes.find(n=>n.id===fromId); if(!parent) return;
+  let name=prompt('نام مرحله میانی جدید:');
+  if(!name||!name.trim()) return;
+  name=name.trim();
+  const {data:node,error}=await sb.from('flow_nodes')
+    .insert({name,message:'',options:[{label:'ادامه ➜',next:toId}]}).select().single();
+  if(error) return toast(error.message);
+  const opts=(Array.isArray(parent.options)?parent.options:[]).map(o=>o.next===toId?{...o,next:node.id}:o);
+  const {error:e2}=await sb.from('flow_nodes').update({options:opts}).eq('id',fromId);
+  if(e2) return toast(e2.message);
+  parent.options=opts; flowNodes.push(node);
+  renderFlowEntrySelect(); renderFlowNodes(); renderFlowDiagram();
+  requestAnimationFrame(()=>{
+    const el=document.querySelector(`[data-fnode="${node.id}"]`);
+    if(el){el.classList.add('flash');el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}
+  });
+  toast('مرحله میانی ساخته شد ✓ — متن پیام و متن دکمه «ادامه ➜» را با ✏️ ویرایش کنید');
+}
 function goToNode(id){
   const el=document.querySelector(`.card[data-nid="${id}"]`);
   if(!el) return;
@@ -1370,9 +1500,9 @@ function showTab(t){
   }
   if(t==='activity')loadLog();
   if(t==='rules')requestAnimationFrame(drawRuleMaps);
-  if(t==='analytics')loadAnalytics();
+  if(t==='analytics'){fillRangeRules();loadAnalytics();}
   if(t==='words')renderWords();
-  if(t==='flow')loadFlow();
+  if(t==='flow'){loadFlow();initDragConnect();}
 }
 function toast(m){
   const el=document.getElementById('toast');
