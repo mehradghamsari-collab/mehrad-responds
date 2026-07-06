@@ -145,8 +145,27 @@
   .fnode.entry b{color:var(--accent)}
   .fnode.end{border-color:#BBE3C9;background:linear-gradient(180deg,var(--live-soft),var(--card))}
   .fnode.end small::before{content:'🏁 '}
-  svg.flines{position:absolute;top:0;right:0;z-index:1;pointer-events:none}
+  svg.flines{position:absolute;top:0;left:0;z-index:1;pointer-events:none}
   .fnode.flash,.card.flash{animation:flash 1.2s ease}
+  /* سگمنت قوانین */
+  .seg{display:flex;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:4px;gap:4px;width:fit-content}
+  .seg button{border:none;background:transparent;border-radius:999px;min-height:38px;padding:7px 22px;color:var(--muted);font-weight:600}
+  .seg button.on{background:var(--card);color:var(--accent);box-shadow:var(--sh);font-weight:800}
+  .cnt{font-family:var(--mono);font-size:10.5px;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 8px;margin-inline-start:4px;direction:ltr;display:inline-block}
+  .rhead{display:flex;gap:10px;align-items:center;cursor:pointer;user-select:none}
+  .rhead .rtitle{font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rhead .caret{transition:transform .25s ease;color:var(--muted);flex:none;font-size:12px}
+  .card.open .caret{transform:rotate(180deg)}
+  .kwchip{font-size:10.5px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:1px 9px;color:var(--muted);white-space:nowrap}
+  .rbody{display:none;margin-top:6px;animation:fadeUp .25s ease}
+  .card.open .rbody{display:block}
+  /* هایلایت مسیر در نقشه */
+  .fnode{position:relative}
+  .fnode.dim{opacity:.3;filter:saturate(.4)}
+  .fnode.hl{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft), 0 6px 18px rgba(64,86,214,.2)}
+  .fedit{position:absolute;top:6px;left:8px;font-size:11px;opacity:.55;cursor:pointer;transition:opacity .2s,transform .15s}
+  .fedit:hover{opacity:1;transform:scale(1.15)}
+
   @keyframes flash{0%,60%{box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}100%{box-shadow:var(--sh)}}
   .livebadge .dot{animation:pulse 1.8s infinite}
 
@@ -237,14 +256,29 @@
 
   <!-- قوانین -->
   <section id="view-rules">
-    <h2>قوانین دایرکت <small>وقتی پیام دایرکت شامل کلمه کلیدی باشد، پاسخ ارسال می‌شود</small></h2>
-    <div id="dmRules"></div>
-    <button class="fullm addbtn" onclick="addRule('dm')">+ افزودن قانون دایرکت</button>
-
-    <h2>قوانین کامنت <small>وقتی کامنت شامل کلمه کلیدی باشد، به فرد دایرکت می‌دهد (و در صورت تمایل زیر کامنت هم پاسخ می‌دهد)</small></h2>
-    <div id="commentRules"></div>
-    <button class="fullm addbtn" onclick="addRule('comment')">+ افزودن قانون کامنت</button>
-    <div class="hint" style="margin-top:14px">💡 «اجرا ×N» یعنی این قانون تا حالا N بار پاسخ فرستاده است.</div>
+    <div class="row" style="margin-top:18px;justify-content:space-between">
+      <div class="seg">
+        <button id="seg-dm" class="on" onclick="setRuleTab('dm')">📥 دایرکت <span class="cnt" id="cntDm">0</span></button>
+        <button id="seg-comment" onclick="setRuleTab('comment')">💬 کامنت <span class="cnt" id="cntCm">0</span></button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <input type="text" class="grow" id="ruleSearch" placeholder="جستجو در نام قانون یا کلمه کلیدی…" oninput="renderRulesFromCache()">
+      <select id="ruleSort" style="width:auto" onchange="renderRulesFromCache()">
+        <option value="new">جدیدترین</option>
+        <option value="fired">بیشترین اجرا</option>
+        <option value="name">بر اساس نام</option>
+      </select>
+    </div>
+    <div id="dmWrap" style="margin-top:12px">
+      <div id="dmRules"></div>
+      <button class="fullm addbtn" onclick="addRule('dm')">+ افزودن قانون دایرکت</button>
+    </div>
+    <div id="commentWrap" class="hidden" style="margin-top:12px">
+      <div id="commentRules"></div>
+      <button class="fullm addbtn" onclick="addRule('comment')">+ افزودن قانون کامنت</button>
+    </div>
+    <div class="hint" style="margin-top:14px">💡 روی سربرگ هر قانون بزنید تا باز/بسته شود · کلید کنار هر قانون همان لحظه ذخیره می‌شود · «اجرا ×N» یعنی N بار پاسخ فرستاده است.</div>
   </section>
 
   <!-- مغز هوشمند -->
@@ -622,10 +656,45 @@ async function loadRules(){
   allRules=data;
   renderRulesFromCache();
 }
+let ruleTab='dm'; const expandedRules=new Set();
+function setRuleTab(t){
+  ruleTab=t;
+  document.getElementById('seg-dm').classList.toggle('on',t==='dm');
+  document.getElementById('seg-comment').classList.toggle('on',t==='comment');
+  document.getElementById('dmWrap').classList.toggle('hidden',t!=='dm');
+  document.getElementById('commentWrap').classList.toggle('hidden',t!=='comment');
+}
 function renderRulesFromCache(){
-  renderRules('dm',allRules.filter(r=>r.kind==='dm'));
-  renderRules('comment',allRules.filter(r=>r.kind==='comment'));
+  const q=(document.getElementById('ruleSearch')?.value||'').toLowerCase().trim();
+  const sort=document.getElementById('ruleSort')?.value||'new';
+  const prep=list=>{
+    let out=list.filter(r=>!q||r.name.toLowerCase().includes(q)||(r.keywords||[]).some(k=>k.toLowerCase().includes(q)));
+    if(sort==='fired') out.sort((a,b)=>b.fired-a.fired);
+    else if(sort==='name') out.sort((a,b)=>a.name.localeCompare(b.name,'fa'));
+    else out.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+    return out;
+  };
+  const dm=allRules.filter(r=>r.kind==='dm'), cm=allRules.filter(r=>r.kind==='comment');
+  document.getElementById('cntDm').textContent=`${dm.filter(r=>r.active).length}/${dm.length}`;
+  document.getElementById('cntCm').textContent=`${cm.filter(r=>r.active).length}/${cm.length}`;
+  renderRules('dm',prep(dm));
+  renderRules('comment',prep(cm));
   renderWords();
+}
+function toggleRuleCard(head){
+  const card=head.closest('.card');
+  card.classList.toggle('open');
+  const id=card.dataset.id;
+  card.classList.contains('open')?expandedRules.add(id):expandedRules.delete(id);
+}
+async function quickActive(id,on){
+  const {error}=await sb.from('rules').update({active:on}).eq('id',id);
+  if(error) return toast(error.message);
+  const r=allRules.find(x=>x.id===id); if(r) r.active=on;
+  const dm=allRules.filter(r=>r.kind==='dm'), cm=allRules.filter(r=>r.kind==='comment');
+  document.getElementById('cntDm').textContent=`${dm.filter(r=>r.active).length}/${dm.length}`;
+  document.getElementById('cntCm').textContent=`${cm.filter(r=>r.active).length}/${cm.length}`;
+  toast(on?'قانون روشن شد ✓':'قانون خاموش شد');
 }
 function respBoxes(cls,values,ph){
   const items=(values&&values.length?values:['']).map(v=>`
@@ -647,20 +716,32 @@ function addRespBox(btn,cls,ph){
 }
 function renderRules(kind,rules){
   const host=document.getElementById(kind==='dm'?'dmRules':'commentRules');
-  if(!rules.length){host.innerHTML='<div class="card hint">هنوز قانونی ندارید. یکی بسازید — مثلا کلمه <code>price</code> ← پیام قیمت شما.</div>';return;}
+  if(!rules.length){host.innerHTML='<div class="card hint">قانونی پیدا نشد. یکی بسازید — مثلا کلمه <code>price</code> ← پیام قیمت شما.</div>';return;}
   host.innerHTML=rules.map(r=>{
     const chips=(r.media_ids||[]).length
       ? (r.media_ids||[]).map(id=>{const m=mediaInfo(id);
           return m?`<span class="chip">${m.img?`<img src="${esc(m.img)}" alt="">`:''}<span>${esc(m.cap)}</span></span>`
                   :`<span class="chip"><span class="ltr" style="font-size:10px">${esc(id.slice(-8))}</span></span>`;}).join('')
       : '<span class="chip all">🌐 همه پست‌ها و ریلزها</span>';
+    const open=expandedRules.has(r.id)?'open':'';
+    const kws=(r.keywords||[]).slice(0,3).map(k=>`<span class="kwchip" dir="auto">${esc(k)}</span>`).join('')
+      +((r.keywords||[]).length>3?`<span class="kwchip">+${faNum(r.keywords.length-3)}</span>`:'');
     return `
-  <div class="card" data-id="${r.id}">
-    <div class="row">
-      <input type="text" class="grow r-name" value="${esc(r.name)}" dir="auto">
-      <span class="fired" title="این قانون تا حالا ${r.fired} بار پاسخ فرستاده است">اجرا ×${r.fired}</span>
-      <label class="switch small" title="روشن/خاموش"><input type="checkbox" class="r-active" ${r.active?'checked':''}><span class="track"></span><span class="knob"></span></label>
+  <div class="card ${open}" data-id="${r.id}">
+    <div class="rhead" onclick="toggleRuleCard(this)">
+      <span class="caret">▼</span>
+      <span class="rtitle" dir="auto">${esc(r.name)}</span>
+      ${kws}
+      ${r.require_follow?'<span class="kwchip" title="قفل فالو">🔒</span>':''}
+      ${r.use_ai?'<span class="kwchip" title="پاسخ با هوش مصنوعی">🤖</span>':''}
+      <span class="fired" title="این قانون تا حالا ${r.fired} بار پاسخ فرستاده است">×${r.fired}</span>
+      <label class="switch small" onclick="event.stopPropagation()" title="روشن/خاموش (فوری ذخیره می‌شود)">
+        <input type="checkbox" class="r-active" ${r.active?'checked':''} onchange="quickActive('${r.id}',this.checked)">
+        <span class="track"></span><span class="knob"></span></label>
     </div>
+    <div class="rbody">
+    <label class="f">نام قانون</label>
+    <input type="text" class="r-name" value="${esc(r.name)}" dir="auto">
     <label class="f">کلمات کلیدی محرک (با ویرگول جدا کنید)</label>
     <input type="text" class="r-keywords" value="${esc(r.keywords.join(', '))}" dir="auto">
     <div class="row" style="margin-top:8px">
@@ -708,6 +789,7 @@ function renderRules(kind,rules){
       <button class="primary" onclick="saveRule('${r.id}','${kind}')">ذخیره قانون</button>
       <button class="danger" onclick="deleteRule('${r.id}')">حذف</button>
     </div>
+    </div>
   </div>`}).join('');
 }
 function toggleAiFields(el){
@@ -716,9 +798,13 @@ function toggleAiFields(el){
   c.querySelector('.ai-on').classList.toggle('hidden',!el.checked);
 }
 async function addRule(kind){
-  const {error}=await sb.from('rules').insert({kind,name:kind==='dm'?'قانون دایرکت جدید':'قانون کامنت جدید',active:false});
+  const {data,error}=await sb.from('rules').insert({kind,name:kind==='dm'?'قانون دایرکت جدید':'قانون کامنت جدید',active:false}).select().single();
   if(error) return toast(error.message);
-  await loadRules(); toast('قانون اضافه شد (خاموش) — پرش کنید، ذخیره و روشن کنید');
+  expandedRules.add(data.id);
+  setRuleTab(kind);
+  await loadRules();
+  document.querySelector(`.card[data-id="${data.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'});
+  toast('قانون اضافه شد (خاموش) — پرش کنید، ذخیره و روشن کنید');
 }
 // جلوگیری از کلمه تکراری با محدوده مشترک
 function findDuplicate(id,kind,keywords,mediaIds){
@@ -1065,7 +1151,7 @@ function renderFlowDiagram(){
   if(!entry||!flowNodes.length){host.innerHTML='<div class="hint">بعد از ساخت مراحل و انتخاب نقطه شروع، نقشه اینجا رسم می‌شود.</div>';return;}
   const byId=Object.fromEntries(flowNodes.map(n=>[n.id,n]));
   if(!byId[entry]){host.innerHTML='<div class="hint">نقطه شروع نامعتبر است.</div>';return;}
-  const seen=new Set([entry]), levels=[], edges=[];
+  const seen=new Set([entry]), levels=[], edges=[], parents={};
   let cur=[entry];
   while(cur.length&&levels.length<8){
     levels.push(cur);
@@ -1075,14 +1161,15 @@ function renderFlowDiagram(){
         if(!o.next||!byId[o.next]) continue;
         const ref=seen.has(o.next);
         edges.push({from:id,to:o.next,ref});
-        if(!ref){seen.add(o.next);nxt.push(o.next);}
+        if(!ref){seen.add(o.next);parents[o.next]=id;nxt.push(o.next);}
       }
     }
     cur=nxt;
   }
   const lvlName=i=>i===0?'شروع':'مرحله '+faNum(i+1);
   const card=(id)=>{const n=byId[id];const opts=(n.options||[]).filter(o=>o.label);
-    return `<div class="fnode ${id===entry?'entry':''} ${opts.length?'':'end'}" data-fnode="${id}" onclick="goToNode('${id}')">
+    return `<div class="fnode ${id===entry?'entry':''} ${opts.length?'':'end'}" data-fnode="${id}" onclick="selectRoute('${id}')">
+      <span class="fedit" title="ویرایش این مرحله" onclick="event.stopPropagation();goToNode('${id}')">✏️</span>
       <b>${esc(n.name)}</b><small>${esc((n.message||'').replace(/\n/g,' ').slice(0,34))||'—'}</small>
       ${opts.length?`<div class="ftags">${opts.slice(0,4).map(o=>`<i>${esc(o.label)}</i>`).join('')}${opts.length>4?'<i>…</i>':''}</div>`:''}
     </div>`;};
@@ -1091,8 +1178,27 @@ function renderFlowDiagram(){
   }</div>`;
   const orphans=flowNodes.filter(n=>!seen.has(n.id));
   if(orphans.length) host.innerHTML+=`<div class="hint" style="margin-top:8px">⚠️ مراحل وصل‌نشده به مسیر: ${orphans.map(n=>esc(n.name)).join('، ')}</div>`;
-  host._edges=edges;
+  host._edges=edges; host._parents=parents; host._entry=entry; host._sel=null;
   requestAnimationFrame(drawFlowEdges);
+  setTimeout(drawFlowEdges,350); // بعد از لود فونت/چیدمان موبایل، دوباره رسم کن
+}
+function selectRoute(id){
+  const host=document.getElementById('flowMap'); if(!host||!host._parents) return;
+  if(host._sel===id){ // دوباره کلیک = پاک کردن هایلایت
+    host._sel=null;
+    host.querySelectorAll('[data-fnode]').forEach(el=>el.classList.remove('dim','hl'));
+    drawFlowEdges(); return;
+  }
+  host._sel=id;
+  const chain=[]; let c=id;
+  while(c){chain.unshift(c); c=host._parents[c];}
+  const inChain=new Set(chain);
+  host.querySelectorAll('[data-fnode]').forEach(el=>{
+    const on=inChain.has(el.dataset.fnode);
+    el.classList.toggle('hl',on); el.classList.toggle('dim',!on);
+  });
+  host._chain=chain;
+  drawFlowEdges();
 }
 function drawFlowEdges(){
   const host=document.getElementById('flowMap'); if(!host||!host._edges) return;
@@ -1100,18 +1206,24 @@ function drawFlowEdges(){
   const w=host.scrollWidth,h=host.scrollHeight;
   svg.setAttribute('width',w);svg.setAttribute('height',h);
   svg.style.width=w+'px';svg.style.height=h+'px';
-  const hr=host.getBoundingClientRect();
+  // مختصات بر اساس offset — مستقل از اسکرول و RTL، روی موبایل هم دقیق
   const pos=id=>{const el=host.querySelector(`[data-fnode="${id}"]`);if(!el)return null;
-    const r=el.getBoundingClientRect();
-    return {l:r.left-hr.left+host.scrollLeft, r:r.right-hr.left+host.scrollLeft, y:r.top-hr.top+host.scrollTop+r.height/2};};
+    let x=0,y=0,p=el;
+    while(p&&p!==host){x+=p.offsetLeft;y+=p.offsetTop;p=p.offsetParent;}
+    return {l:x, r:x+el.offsetWidth, y:y+el.offsetHeight/2};};
+  const chain=host._sel?(host._chain||[]):[];
+  const chainEdge=(f,t)=>{const i=chain.indexOf(f);return i>-1&&chain[i+1]===t;};
   svg.innerHTML=host._edges.map(e=>{
     const a=pos(e.from),b=pos(e.to); if(!a||!b) return '';
-    // RTL: از لبه چپ والد به لبه راست فرزند
     const x1=a.l-2, y1=a.y, x2=b.r+2, y2=b.y, mx=(x1+x2)/2;
+    const onRoute=chainEdge(e.from,e.to);
+    const col=onRoute?'var(--accent)':(e.ref?'var(--accent)':'#C6C9D6');
+    const wdt=onRoute?3.5:2;
+    const op=host._sel&&!onRoute?.18:(e.ref?.7:1);
     return `<path d="M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}"
-      fill="none" stroke="${e.ref?'var(--accent)':'#C6C9D6'}" stroke-width="2"
-      ${e.ref?'stroke-dasharray="5 5" opacity=".7"':''} />
-      <circle cx="${x2}" cy="${y2}" r="3.5" fill="${e.ref?'var(--accent)':'#C6C9D6'}"/>`;
+      fill="none" stroke="${col}" stroke-width="${wdt}" opacity="${op}"
+      ${e.ref&&!onRoute?'stroke-dasharray="5 5"':''} />
+      <circle cx="${x2}" cy="${y2}" r="${onRoute?4.5:3.5}" fill="${col}" opacity="${op}"/>`;
   }).join('');
 }
 window.addEventListener('resize',()=>{if(!document.getElementById('view-flow').classList.contains('hidden'))drawFlowEdges();});
