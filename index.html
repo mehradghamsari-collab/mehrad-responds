@@ -173,6 +173,13 @@
   @media (hover:none){.fplus{opacity:.9}}
   .fnode.off{opacity:.5;border-style:dashed}
   .maplbl{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .edgemenu{position:fixed;z-index:80;background:var(--card);border:1px solid var(--line);border-radius:13px;
+    box-shadow:0 10px 34px rgba(17,18,24,.18);padding:6px;display:flex;flex-direction:column;gap:4px;min-width:190px;animation:fadeUp .18s ease}
+  .edgemenu button{border:none;background:transparent;text-align:right;min-height:40px;padding:8px 14px;border-radius:9px;font-size:13.5px}
+  .edgemenu button:hover{background:var(--soft);color:var(--ink)}
+  .edgemenu button.danger:hover{background:var(--danger-soft);color:var(--danger)}
+  .fcol.tray{border:1.5px dashed var(--line2);border-radius:14px;padding:12px 10px 10px;background:var(--soft)}
+  .fcol.tray .flvl{color:var(--accent)}
   .fout{position:absolute;left:-8px;top:50%;transform:translateY(-50%);width:16px;height:16px;border-radius:50%;
     background:var(--card);border:2.5px solid var(--accent);cursor:crosshair;z-index:4;touch-action:none;
     transition:transform .15s, box-shadow .2s}
@@ -181,6 +188,18 @@
   .edgehit{cursor:pointer}
   .linegrid{stroke:var(--line);stroke-width:1}
   .linelbl{font-size:10px;fill:var(--muted);font-family:var(--mono)}
+  .chart3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+  .chart3 .card{margin-bottom:0}
+  .hrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .hrow:last-child{border-bottom:none}
+  .hname{width:130px;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:none}
+  .htrack{flex:1;display:flex;flex-direction:column;gap:4px}
+  .hbar{height:13px;border-radius:999px;display:flex;align-items:center;min-width:2px;transition:width .7s ease;position:relative}
+  .hbar b{font-size:10px;font-weight:800;position:absolute;inset-inline-end:-4px;transform:translateX(-100%);color:#fff;direction:ltr}
+  .hbar.g{background:#B9BECF}
+  .hbar.c{background:var(--live)}
+  .hleg{display:flex;gap:16px;font-size:11.5px;color:var(--muted);margin-bottom:6px}
+  .hleg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-start:4px;vertical-align:-1px}
 
   @keyframes flash{0%,60%{box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}100%{box-shadow:var(--sh)}}
   .livebadge .dot{animation:pulse 1.8s infinite}
@@ -400,6 +419,10 @@
   <!-- آمار -->
   <section id="view-analytics" class="hidden">
     <h2>آمار زنده <small><span class="livebadge"><span class="dot"></span>هر ۳۰ ثانیه خودکار به‌روز می‌شود</span></small></h2>
+    <div class="card" style="padding:12px 18px">
+      <label class="f" style="margin-top:0">نمایش همه آمار و نمودارها برای</label>
+      <select id="statRule" onchange="loadAnalytics()"><option value="">همه قوانین و پاسخ‌ها</option></select>
+    </div>
     <div class="stats">
       <div class="stat hl"><b id="stToday">–</b><span>پاسخ امروز</span></div>
       <div class="stat"><b id="stWeek">–</b><span>پاسخ ۷ روز اخیر</span></div>
@@ -418,12 +441,8 @@
       <div class="meter"><i id="capBar"></i></div>
     </div>
     <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:flex-end">
-        <strong>نمودار بازه دلخواه <span class="hint" style="display:inline">— بازه به ۱۰ ستون مساوی تقسیم می‌شود</span></strong>
-      </div>
+      <strong>نمودار بازه دلخواه <span class="hint" style="display:inline">— بازه به ۱۰ نقطه مساوی تقسیم می‌شود</span></strong>
       <div class="row" style="margin-top:10px">
-        <div class="grow"><label class="f" style="margin-top:0">قانون</label>
-          <select id="rangeRule" onchange="loadRangeChart()"><option value="">همه پاسخ‌ها</option></select></div>
         <div class="grow"><label class="f" style="margin-top:0">از</label><input type="datetime-local" class="ltr" id="rangeFrom"></div>
         <div class="grow"><label class="f" style="margin-top:0">تا</label><input type="datetime-local" class="ltr" id="rangeTo"></div>
       </div>
@@ -436,7 +455,7 @@
         </div>
         <button class="primary" onclick="loadRangeChart()">نمایش نمودار</button>
       </div>
-      <div class="bars" id="rangeBars" style="height:150px"></div>
+      <div class="ltr" style="width:100%"><svg id="rangeLine" viewBox="0 0 720 180" style="width:100%;height:auto;display:block"></svg></div>
       <div class="hint" id="rangeInfo"></div>
     </div>
     <div class="card">
@@ -445,7 +464,20 @@
     </div>
     <div class="card">
       <strong>۷ روز گذشته</strong>
-      <div class="bars" id="weekBars"></div>
+      <div class="ltr" style="width:100%"><svg id="weekLine" viewBox="0 0 720 180" style="width:100%;height:auto;display:block"></svg></div>
+    </div>
+    <div class="chart3" style="margin-bottom:12px">
+      <div class="card"><strong>🤖 پاسخ هوش مصنوعی <span class="hint" style="display:inline">· ۷ روز</span></strong>
+        <div class="ltr"><svg id="aiLine" viewBox="0 0 720 190" style="width:100%;height:auto;display:block"></svg></div></div>
+      <div class="card"><strong>📥 دایرکت‌ها <span class="hint" style="display:inline">· ۷ روز</span></strong>
+        <div class="ltr"><svg id="dmLine" viewBox="0 0 720 190" style="width:100%;height:auto;display:block"></svg></div></div>
+      <div class="card"><strong>💬 کامنت‌ها <span class="hint" style="display:inline">· ۷ روز</span></strong>
+        <div class="ltr"><svg id="cmLine" viewBox="0 0 720 190" style="width:100%;height:auto;display:block"></svg></div></div>
+    </div>
+    <div class="card">
+      <strong>قفل فالو، قانون به قانون</strong>
+      <div class="hleg"><span>به قفل خوردند<i style="background:#B9BECF"></i></span><span>فالو کردند و برگشتند<i style="background:var(--live)"></i></span></div>
+      <div id="followBars"></div>
     </div>
   </section>
 
@@ -481,7 +513,10 @@
     <h2>نقشه مسیر <small>نمای کلی از نقطه شروع تا پیام‌های پایانی — روی هر جعبه بزنید تا مستقیم به ویرایشش بروید</small></h2>
     <div class="card">
       <div class="fwrap" id="flowMap"><div class="hint">بعد از ساخت مراحل و انتخاب نقطه شروع، نقشه اینجا رسم می‌شود.</div></div>
-      <div class="hint">⚬ حلقه کنار هر جعبه را بگیرید و روی جعبه مقصد رها کنید تا وصل شوند · روی هر <b>خط</b> بزنید تا مرحله‌ای میان آن دو اضافه شود · + شاخه جدید می‌سازد · ✏️ ویرایش</div>
+      <div class="row" style="margin-top:10px">
+        <button onclick="addFreeBox()">🧩 افزودن جعبه آزاد</button>
+      </div>
+      <div class="hint" style="margin-top:8px">⚬ حلقه کنار هر جعبه را بگیرید و روی جعبه مقصد رها کنید تا وصل شوند · روی هر <b>خط</b> بزنید: قطع اتصال یا افزودن مرحله میانی · + شاخه جدید می‌سازد · ✏️ ویرایش · جعبه‌های آزاد در سینی 🧩 می‌مانند تا با فلش وصلشان کنید</div>
     </div>
 
     <h2>پیام‌ها و سوال‌ها <small>هر کارت یک مرحله است؛ دکمه‌هایش به مرحله بعد اشاره می‌کنند. کارت بدون دکمه = پیام پایانی</small></h2>
@@ -976,12 +1011,14 @@ function pickPost(cb){
 }
 
 // ---------- کلمات ----------
+const rulePalette=['#4056D6','#16A34A','#D97706','#DB2777','#0891B2','#7C3AED','#DC2626','#65A30D','#0D9488','#9333EA'];
+function ruleColor(id){const i=allRules.findIndex(r=>r.id===id);return rulePalette[(i<0?0:i)%rulePalette.length];}
 function renderWords(){
   const body=document.getElementById('wordsBody'); if(!body) return;
   const q=(document.getElementById('wordSearch')?.value||'').toLowerCase().trim();
-  const rows=[];
-  const seen={};
-  for(const r of allRules){
+  const rows=[]; const seen={};
+  const ordered=[...allRules].sort((a,b)=>a.kind===b.kind?new Date(a.created_at)-new Date(b.created_at):(a.kind==='dm'?-1:1));
+  for(const r of ordered){
     for(const k of (r.keywords||[])){
       const key=r.kind+':'+k.toLowerCase().trim();
       seen[key]=(seen[key]||0)+1;
@@ -989,14 +1026,15 @@ function renderWords(){
     }
   }
   body.innerHTML=rows
-    .filter(x=>!q||x.k.toLowerCase().includes(q))
+    .filter(x=>!q||x.k.toLowerCase().includes(q)||x.r.name.toLowerCase().includes(q))
     .map(({k,r})=>{
+      const c=ruleColor(r.id);
       const dupBadge=seen[r.kind+':'+k.toLowerCase().trim()]>1?' <span class="tag failed">تکراری!</span>':'';
       const scope=r.kind==='comment'?((r.media_ids||[]).length?faNum((r.media_ids||[]).length)+' پست':'همه پست‌ها'):'—';
-      return `<tr>
+      return `<tr style="border-inline-start:4px solid ${c}">
         <td dir="auto"><strong>${esc(k)}</strong>${dupBadge}</td>
         <td>${r.kind==='dm'?'دایرکت':'کامنت'}</td>
-        <td dir="auto">${esc(r.name)}</td>
+        <td dir="auto"><span class="tag" style="background:${c}1A;color:${c};border-color:${c}55;font-family:var(--fa)">${esc(r.name)}</span></td>
         <td>${scope}</td>
         <td class="mono">×${r.fired}</td>
         <td>${r.active?'<span class="tag sent">فعال</span>':'<span class="tag">خاموش</span>'}</td>
@@ -1006,82 +1044,109 @@ function renderWords(){
 
 // ---------- آمار زنده ----------
 async function loadAnalytics(){
+  const rid=document.getElementById('statRule').value||null;
   const now=Date.now();
   const iso=ms=>new Date(now-ms).toISOString();
-  const count=async q=>{const {count:c}=await q;return c??0;};
-  const base=()=>sb.from('message_log').select('id',{count:'exact',head:true}).eq('status','sent');
   const todayStart=new Date(new Date().setHours(0,0,0,0)).toISOString();
-  const [today,week,total,ai,dm,cm,hour,gated]=await Promise.all([
-    count(base().gte('at',todayStart)),
-    count(base().gte('at',iso(7*864e5))),
+  const count=async q=>{const {count:c}=await q;return c??0;};
+  const F=q=>rid?q.eq('matched_rule',rid):q;
+  const base=()=>F(sb.from('message_log').select('id',{count:'exact',head:true}).eq('status','sent'));
+
+  // یک کوئری ۷ روزه، منبع همه نمودارهای خطی
+  const {data:rows7}=await F(sb.from('message_log').select('at,kind,source').eq('status','sent')
+    .gte('at',iso(7*864e5))).limit(10000);
+  const R7=rows7||[];
+
+  const [total,ai,dm,cm,hour,gated]=await Promise.all([
     count(base()),
     count(base().eq('source','ai')),
     count(base().eq('kind','dm')),
     count(base().eq('kind','comment')),
     count(base().gte('at',iso(36e5))),
-    count(sb.from('message_log').select('id',{count:'exact',head:true}).eq('status','follow-gated')),
+    count(F(sb.from('message_log').select('id',{count:'exact',head:true}).eq('status','follow-gated'))),
   ]);
-  // تبدیل قفل فالو: کسانی که بعد از قفل، پاسخ اصلی گرفتند
-  const {data:gRows}=await sb.from('message_log').select('sender_id,at,status').in('status',['follow-gated','sent']).order('at').limit(5000);
-  const gatedAt={}; const converted=new Set();
-  (gRows||[]).forEach(r=>{
-    if(r.status==='follow-gated') gatedAt[r.sender_id]=r.at;
-    else if(gatedAt[r.sender_id]&&r.at>gatedAt[r.sender_id]) converted.add(r.sender_id);
-  });
+  const today=R7.filter(r=>r.at>=todayStart).length;
   const set=(id,v)=>document.getElementById(id).textContent=faNum(v);
-  set('stToday',today);set('stWeek',week);set('stTotal',total);set('stAi',ai);
-  set('stDm',dm);set('stCm',cm);set('stGated',gated);set('stConv',converted.size);
+  set('stToday',today);set('stWeek',R7.length);set('stTotal',total);set('stAi',ai);
+  set('stDm',dm);set('stCm',cm);set('stGated',gated);
+
   const cap=settings?.hourly_cap??150;
   document.getElementById('capText').textContent=`${hour} / ${cap}`;
   document.getElementById('capBar').style.width=Math.min(100,hour/cap*100)+'%';
 
-  // نمودار خطی ساعتی امروز
-  const {data:tRows}=await sb.from('message_log').select('at').eq('status','sent').gte('at',todayStart).limit(5000);
+  // نمودار ساعتی امروز
   const hours=Array(24).fill(0);
-  (tRows||[]).forEach(r=>{hours[new Date(r.at).getHours()]++;});
-  drawHourLine(hours);
+  R7.filter(r=>r.at>=todayStart).forEach(r=>{hours[new Date(r.at).getHours()]++;});
+  drawLine('hourLine',hours,hours.map((_,h)=>h%4===0?String(h).padStart(2,'0'):''),{hl:new Date().getHours()});
 
-  // نمودار ۷ روز
-  const {data:rows}=await sb.from('message_log').select('at').eq('status','sent').gte('at',iso(7*864e5)).limit(5000);
-  const days={},labels=[];
-  for(let i=6;i>=0;i--){const k=new Date(now-i*864e5).toISOString().slice(0,10);days[k]=0;labels.push(k);}
-  (rows||[]).forEach(r=>{const k=r.at.slice(0,10);if(k in days)days[k]++;});
-  const max=Math.max(1,...Object.values(days));
-  document.getElementById('weekBars').innerHTML=labels.map((k,i)=>`
-    <div class="bcol ${i===6?'today':''}" title="${days[k]} پاسخ"><b class="bval">${days[k]?faNum(days[k]):''}</b><i style="height:${Math.round(days[k]/max*100)}%"></i><span>${k.slice(5)}</span></div>`).join('');
+  // سری‌های ۷ روزه
+  const dayKeys=[];for(let i=6;i>=0;i--)dayKeys.push(new Date(now-i*864e5).toISOString().slice(0,10));
+  const series=filter=>{const m=Object.fromEntries(dayKeys.map(k=>[k,0]));
+    R7.filter(filter).forEach(r=>{const k=r.at.slice(0,10);if(k in m)m[k]++;});
+    return dayKeys.map(k=>m[k]);};
+  const dLbl=dayKeys.map(k=>k.slice(5));
+  drawLine('weekLine',series(()=>true),dLbl,{hl:6});
+  drawLine('aiLine',series(r=>r.source==='ai'),dLbl,{hl:6,color:'#7C3AED'});
+  drawLine('dmLine',series(r=>r.kind==='dm'),dLbl,{hl:6,color:'#4056D6'});
+  drawLine('cmLine',series(r=>r.kind==='comment'),dLbl,{hl:6,color:'#D97706'});
+
+  // قفل فالو، قانون به قانون + شمارنده تبدیل
+  const {data:gRows}=await sb.from('message_log').select('sender_id,at,status,matched_rule')
+    .in('status',['follow-gated','sent']).order('at').limit(8000);
+  const gatedBy={},convBy={},lastGate={};const convSet=new Set();
+  (gRows||[]).forEach(r=>{
+    if(r.status==='follow-gated'){lastGate[r.sender_id]=r.matched_rule;gatedBy[r.matched_rule]=(gatedBy[r.matched_rule]||0)+1;}
+    else if(lastGate[r.sender_id]!==undefined){
+      const gr=lastGate[r.sender_id];
+      convBy[gr]=(convBy[gr]||0)+1;
+      if(!rid||gr===rid)convSet.add(r.sender_id);
+      delete lastGate[r.sender_id];
+    }
+  });
+  set('stConv',convSet.size);
+  const frRules=allRules.filter(r=>(gatedBy[r.id]||0)>0||r.require_follow);
+  const fmax=Math.max(1,...frRules.map(r=>gatedBy[r.id]||0));
+  document.getElementById('followBars').innerHTML=frRules.length?frRules.map(r=>`
+    <div class="hrow">
+      <span class="hname" dir="auto" title="${esc(r.name)}">${r.kind==='dm'?'📥':'💬'} ${esc(r.name)}</span>
+      <div class="htrack">
+        <div class="hbar g" style="width:${Math.max(2,(gatedBy[r.id]||0)/fmax*100)}%"><b>${faNum(gatedBy[r.id]||0)}</b></div>
+        <div class="hbar c" style="width:${Math.max(2,(convBy[r.id]||0)/fmax*100)}%"><b>${faNum(convBy[r.id]||0)}</b></div>
+      </div>
+    </div>`).join(''):'<div class="hint">هنوز قانونی با قفل فالو فعال نشده یا کسی به قفل نخورده است.</div>';
 
   clearTimeout(statTimer);
   statTimer=setTimeout(()=>{if(!document.getElementById('view-analytics').classList.contains('hidden'))loadAnalytics();},30000);
 }
 
-// ---------- نمودار خطی ساعتی ----------
-function drawHourLine(hours){
-  const svg=document.getElementById('hourLine'); if(!svg) return;
-  const W=720,H=180,L=34,R=10,T=16,B=28;
+// نمودار خطی عمومی — همه نمودارها از همین استفاده می‌کنند
+function drawLine(svgId,values,labels,opts={}){
+  const svg=document.getElementById(svgId); if(!svg) return;
+  const color=opts.color||'var(--accent)';
+  const W=720,H=parseInt((svg.getAttribute('viewBox')||'0 0 720 180').split(' ')[3]),L=34,R=12,T=18,B=28;
   const iw=W-L-R, ih=H-T-B;
-  const max=Math.max(1,...hours);
-  const X=i=>L+i*(iw/23), Y=v=>T+ih-(v/max)*ih;
-  const nowH=new Date().getHours();
-  // grid
+  const max=Math.max(1,...values);
+  const n=values.length;
+  const X=i=>L+(n>1?i*(iw/(n-1)):iw/2), Y=v=>T+ih-(v/max)*ih;
   let g='';
-  for(const gv of [0,Math.ceil(max/2),max]){
+  for(const gv of [...new Set([0,Math.ceil(max/2),max])]){
     g+=`<line class="linegrid" x1="${L}" y1="${Y(gv)}" x2="${W-R}" y2="${Y(gv)}" stroke-dasharray="3 4"/>
         <text class="linelbl" x="${L-6}" y="${Y(gv)+3}" text-anchor="end">${gv}</text>`;
   }
-  for(let h=0;h<24;h+=4) g+=`<text class="linelbl" x="${X(h)}" y="${H-8}" text-anchor="middle">${String(h).padStart(2,'0')}</text>`;
-  // smooth path
-  const pts=hours.map((v,i)=>[X(i),Y(v)]);
+  labels.forEach((lb,i)=>{if(lb)g+=`<text class="linelbl" x="${X(i)}" y="${H-8}" text-anchor="middle">${lb}</text>`;});
+  const pts=values.map((v,i)=>[X(i),Y(v)]);
   let d=`M ${pts[0][0]} ${pts[0][1]}`;
   for(let i=1;i<pts.length;i++){
     const [x0,y0]=pts[i-1],[x1,y1]=pts[i],mx=(x0+x1)/2;
     d+=` C ${mx} ${y0}, ${mx} ${y1}, ${x1} ${y1}`;
   }
-  const area=d+` L ${X(23)} ${T+ih} L ${X(0)} ${T+ih} Z`;
-  const dots=hours.map((v,i)=>v?`<circle cx="${X(i)}" cy="${Y(v)}" r="${i===nowH?5:3.5}" fill="${i===nowH?'var(--live)':'var(--accent)'}"><title>${String(i).padStart(2,'0')}:00 — ${v} پاسخ</title></circle>
+  const area=d+` L ${X(n-1)} ${T+ih} L ${X(0)} ${T+ih} Z`;
+  const gid='ag_'+svgId;
+  const dots=values.map((v,i)=>v?`<circle cx="${X(i)}" cy="${Y(v)}" r="${i===opts.hl?5:3.5}" fill="${i===opts.hl?'var(--live)':color}"><title>${labels[i]||i} — ${v} پاسخ</title></circle>
     <text class="linelbl" x="${X(i)}" y="${Y(v)-9}" text-anchor="middle" style="font-weight:700;fill:var(--ink)">${v}</text>`:'').join('');
-  svg.innerHTML=`<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="var(--accent)" stop-opacity=".18"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
-    ${g}<path d="${area}" fill="url(#ag)"/><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>${dots}`;
+  svg.innerHTML=`<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${color}" stop-opacity=".16"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    ${g}<path d="${area}" fill="url(#${gid})"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>${dots}`;
 }
 
 // ---------- نمودار بازه دلخواه ----------
@@ -1093,11 +1158,11 @@ function rangePreset(hours){
   document.getElementById('rangeTo').value=toLocalInput(to);
   loadRangeChart();
 }
-function fillRangeRules(){
-  const sel=document.getElementById('rangeRule'); if(!sel) return;
+function fillStatRules(){
+  const sel=document.getElementById('statRule'); if(!sel) return;
   const cur=sel.value;
   const opt=r=>`<option value="${r.id}" ${cur===r.id?'selected':''}>${r.kind==='dm'?'📥':'💬'} ${esc(r.name)}</option>`;
-  sel.innerHTML='<option value="">همه پاسخ‌ها</option>'
+  sel.innerHTML='<option value="">همه قوانین و پاسخ‌ها</option>'
     +'<optgroup label="قوانین دایرکت">'+allRules.filter(r=>r.kind==='dm').map(opt).join('')+'</optgroup>'
     +'<optgroup label="قوانین کامنت">'+allRules.filter(r=>r.kind==='comment').map(opt).join('')+'</optgroup>';
 }
@@ -1106,7 +1171,7 @@ async function loadRangeChart(){
   if(!fv||!tv) return rangePreset(24);
   const from=new Date(fv), to=new Date(tv);
   if(!(from<to)) return toast('بازه نامعتبر است — «از» باید قبل از «تا» باشد');
-  const rid=document.getElementById('rangeRule').value;
+  const rid=document.getElementById('statRule').value;
   let q=sb.from('message_log').select('at').eq('status','sent')
     .gte('at',from.toISOString()).lte('at',to.toISOString()).limit(10000);
   if(rid) q=q.eq('matched_rule',rid);
@@ -1114,15 +1179,12 @@ async function loadRangeChart(){
   if(error) return toast(error.message);
   const span=to-from, step=span/10, counts=Array(10).fill(0);
   (data||[]).forEach(r=>{const i=Math.min(9,Math.floor((new Date(r.at)-from)/step));counts[i]++;});
-  const max=Math.max(1,...counts);
   const fmt=d=>span<=48*36e5
     ? d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'})
     : d.toLocaleDateString('fa-IR',{month:'2-digit',day:'2-digit'});
-  document.getElementById('rangeBars').innerHTML=counts.map((v,i)=>{
-    const bs=new Date(from.getTime()+i*step);
-    return `<div class="bcol" title="${v} پاسخ"><b class="bval">${v?faNum(v):''}</b><i style="height:${Math.round(v/max*100)}%"></i><span>${fmt(bs)}</span></div>`;}).join('');
-  const totalR=(data||[]).length;
-  document.getElementById('rangeInfo').textContent=`مجموع ${faNum(totalR)} پاسخ در این بازه · هر ستون ${span<=48*36e5?faNum(Math.round(step/6e4))+' دقیقه':faNum((step/864e5).toLocaleString('fa-IR',{maximumFractionDigits:1}))+' روز'}`;
+  const labels=counts.map((_,i)=>fmt(new Date(from.getTime()+i*step)));
+  drawLine('rangeLine',counts,labels);
+  document.getElementById('rangeInfo').textContent=`مجموع ${faNum((data||[]).length)} پاسخ در این بازه · هر نقطه ${span<=48*36e5?faNum(Math.round(step/6e4))+' دقیقه':faNum((step/864e5).toLocaleString('fa-IR',{maximumFractionDigits:1}))+' روز'}`;
 }
 
 // ---------- فعالیت و بی‌صدا ----------
@@ -1207,7 +1269,7 @@ function renderFlowNodes(){
     </div>
     <label class="f">متن پیام / سوال</label>
     <textarea class="n-msg" rows="3" dir="auto" placeholder="مثلا: سلام! 👋 دنبال چه چیزی هستی؟">${esc(n.message||'')}</textarea>
-    <label class="f">دکمه‌ها (حداکثر ۱۱ عدد — بدون دکمه = پیام پایانی)</label>
+    <label class="f">دکمه‌ها — تا ۳۰ عدد؛ در چت ۱۰تا ۱۰تا با دکمه «➕ موارد بیشتر» نمایش داده می‌شود (بدون دکمه = پیام پایانی)</label>
     <div class="opt-list">${rows}</div>
     <button type="button" class="addbtn" style="margin-top:2px" onclick="addFlowOption(this)">+ افزودن دکمه</button>
     <div class="row" style="margin-top:14px">
@@ -1218,7 +1280,7 @@ function renderFlowNodes(){
 }
 function addFlowOption(btn){
   const list=btn.closest('.card').querySelector('.opt-list');
-  if(list.children.length>=11) return toast('حداکثر ۱۱ دکمه — ۲ جای دیگر برای «بازگشت» و «منوی اصلی» رزرو است');
+  if(list.children.length>=30) return toast('حداکثر ۳۰ دکمه برای هر مرحله');
   const div=document.createElement('div');div.className='resp-item';
   div.innerHTML=`<input type="text" class="o-label" dir="auto" maxlength="20" style="flex:1" placeholder="متن دکمه (تا ۲۰ حرف)">
     <select class="o-next" style="flex:1.4">${nextSelect('')}</select>
@@ -1309,11 +1371,16 @@ function renderFlowDiagram(){
       <b>${esc(n.name)}</b><small>${esc((n.message||'').replace(/\n/g,' ').slice(0,34))||'—'}</small>
       ${opts.length?`<div class="ftags">${opts.slice(0,4).map(o=>`<i>${esc(o.label)}</i>`).join('')}${opts.length>4?'<i>…</i>':''}</div>`:''}
     </div>`;};
+  const orphans=flowNodes.filter(n=>!seen.has(n.id));
+  // یال‌های جعبه‌های آزاد هم رسم شوند (لگو!)
+  for(const o of orphans){
+    for(const op of (o.options||[])){
+      if(op.next&&byId[op.next]) edges.push({from:o.id,to:op.next,ref:false});
+    }
+  }
   host.innerHTML=`<svg class="flines"></svg><div class="fcols">${
     levels.map((col,i)=>`<div class="fcol"><div class="flvl">${lvlName(i)}</div>${col.map(card).join('')}</div>`).join('')
-  }</div>`;
-  const orphans=flowNodes.filter(n=>!seen.has(n.id));
-  if(orphans.length) host.innerHTML+=`<div class="hint" style="margin-top:8px">⚠️ مراحل وصل‌نشده به مسیر: ${orphans.map(n=>esc(n.name)).join('، ')}</div>`;
+  }${orphans.length?`<div class="fcol tray"><div class="flvl">🧩 جعبه‌های آزاد</div>${orphans.map(n=>card(n.id)).join('')}</div>`:''}</div>`;
   host._edges=edges; host._parents=parents; host._entry=entry; host._sel=null;
   requestAnimationFrame(drawFlowEdges);
   setTimeout(drawFlowEdges,350); // بعد از لود فونت/چیدمان موبایل، دوباره رسم کن
@@ -1340,7 +1407,7 @@ function selectRoute(id){
 async function addBranch(parentId){
   const parent=flowNodes.find(n=>n.id===parentId); if(!parent) return;
   const opts=Array.isArray(parent.options)?parent.options:[];
-  if(opts.length>=11) return toast('این مرحله به سقف ۱۱ دکمه رسیده است');
+  if(opts.length>=30) return toast('این مرحله به سقف ۳۰ دکمه رسیده است');
   let label=prompt('متن دکمه جدید (حداکثر ۲۰ حرف):');
   if(!label||!label.trim()) return;
   label=label.trim().slice(0,20);
@@ -1384,7 +1451,7 @@ function paintEdges(host,attr){
       ${e.ref&&!onRoute?'stroke-dasharray="5 5"':''} />
       <circle cx="${x2}" cy="${y2}" r="${onRoute?4.5:3.5}" fill="${col}" opacity="${op}"/>
       ${interactive&&!e.ref?`<path class="edgehit" d="${dd}" fill="none" stroke="transparent" stroke-width="18"
-        style="pointer-events:stroke" onclick="insertBetween('${e.from}','${e.to}')"><title>افزودن مرحله میانی روی این خط</title></path>`:''}`;
+        style="pointer-events:stroke" onclick="openEdgeMenu(event,'${e.from}','${e.to}')"><title>قطع اتصال یا افزودن مرحله میانی</title></path>`:''}`;
   }).join('');
 }
 window.addEventListener('resize',()=>{
@@ -1435,7 +1502,7 @@ function initDragConnect(){
     const srcNode=flowNodes.find(n=>n.id===srcId); if(!srcNode) return;
     const opts=Array.isArray(srcNode.options)?srcNode.options:[];
     if(opts.some(o=>o.next===toId)) return toast('این دو مرحله از قبل به هم وصل هستند');
-    if(opts.length>=11) return toast('این مرحله به سقف ۱۱ دکمه رسیده است');
+    if(opts.length>=30) return toast('این مرحله به سقف ۳۰ دکمه رسیده است');
     let label=prompt('متن دکمه برای این اتصال (حداکثر ۲۰ حرف):');
     if(!label||!label.trim()) return;
     label=label.trim().slice(0,20);
@@ -1446,6 +1513,55 @@ function initDragConnect(){
     renderFlowNodes(); renderFlowDiagram();
     toast('وصل شد ✓');
   });
+}
+
+// ---------- جعبه آزاد (لگو) ----------
+async function addFreeBox(){
+  let name=prompt('نام جعبه جدید:');
+  if(!name||!name.trim()) return;
+  const {data:node,error}=await sb.from('flow_nodes').insert({name:name.trim(),message:''}).select().single();
+  if(error) return toast(error.message);
+  flowNodes.push(node);
+  renderFlowEntrySelect(); renderFlowNodes(); renderFlowDiagram();
+  requestAnimationFrame(()=>{
+    const el=document.querySelector(`[data-fnode="${node.id}"]`);
+    if(el){el.classList.add('flash');el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}
+  });
+  toast('جعبه آزاد ساخته شد 🧩 — با حلقه ⚬ به بقیه وصلش کنید و با ✏️ متنش را بنویسید');
+}
+
+// ---------- منوی خط: قطع اتصال یا مرحله میانی ----------
+function openEdgeMenu(ev,fromId,toId){
+  ev.stopPropagation();
+  closeEdgeMenu();
+  const m=document.createElement('div');
+  m.className='edgemenu'; m.id='edgeMenu';
+  const fn=flowNodes.find(n=>n.id===fromId)?.name||'', tn=flowNodes.find(n=>n.id===toId)?.name||'';
+  m.innerHTML=`
+    <div class="hint" style="padding:4px 14px 2px" dir="auto">${esc(fn)} ← ${esc(tn)}</div>
+    <button onclick="insertBetween('${fromId}','${toId}');closeEdgeMenu()">⬛ افزودن مرحله میانی</button>
+    <button class="danger" onclick="disconnectEdge('${fromId}','${toId}');closeEdgeMenu()">✂️ قطع اتصال</button>
+    <button onclick="closeEdgeMenu()">انصراف</button>`;
+  document.body.appendChild(m);
+  const x=Math.min(ev.clientX,window.innerWidth-210), y=Math.min(ev.clientY,window.innerHeight-170);
+  m.style.left=Math.max(8,x-95)+'px'; m.style.top=(y+8)+'px';
+  setTimeout(()=>document.addEventListener('pointerdown',edgeMenuOutside),0);
+}
+function edgeMenuOutside(e){ if(!e.target.closest('#edgeMenu')) closeEdgeMenu(); }
+function closeEdgeMenu(){
+  document.getElementById('edgeMenu')?.remove();
+  document.removeEventListener('pointerdown',edgeMenuOutside);
+}
+async function disconnectEdge(fromId,toId){
+  const parent=flowNodes.find(n=>n.id===fromId); if(!parent) return;
+  const before=(Array.isArray(parent.options)?parent.options:[]);
+  const after=before.filter(o=>o.next!==toId);
+  if(after.length===before.length) return toast('اتصالی پیدا نشد');
+  const {error}=await sb.from('flow_nodes').update({options:after}).eq('id',fromId);
+  if(error) return toast(error.message);
+  parent.options=after;
+  renderFlowNodes(); renderFlowDiagram();
+  toast('اتصال قطع شد ✂️ — جعبه جداشده به سینی «جعبه‌های آزاد» رفت و می‌توانید دوباره وصلش کنید');
 }
 
 // ---------- افزودن مرحله میانی روی خط ----------
@@ -1500,7 +1616,7 @@ function showTab(t){
   }
   if(t==='activity')loadLog();
   if(t==='rules')requestAnimationFrame(drawRuleMaps);
-  if(t==='analytics'){fillRangeRules();loadAnalytics();}
+  if(t==='analytics'){fillStatRules();loadAnalytics();rangePreset(24);}
   if(t==='words')renderWords();
   if(t==='flow'){loadFlow();initDragConnect();}
 }
