@@ -124,7 +124,30 @@
   .bcol i{width:100%;max-width:40px;background:var(--accent);border-radius:6px 6px 0 0;min-height:3px;transition:height .7s ease;opacity:.85}
   .bcol.today i{background:var(--live)}
   .bcol span{font-size:10px;color:var(--muted);direction:ltr}
+  .bval{font-size:10px;font-weight:700;color:var(--ink);direction:ltr;min-height:14px}
   .livebadge{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--live);font-weight:700}
+  .presets{display:flex;gap:6px;flex-wrap:wrap}
+  .presets button{min-height:34px;padding:6px 13px;font-size:12.5px;border-radius:999px}
+
+  /* نقشه مسیر (bracket) */
+  .fwrap{position:relative;overflow-x:auto;padding:14px 4px}
+  .fcols{display:flex;gap:64px;align-items:flex-start;min-width:max-content;position:relative;z-index:2}
+  .fcol{display:flex;flex-direction:column;gap:22px}
+  .flvl{font-size:10.5px;color:var(--muted);text-align:center;font-weight:700;margin-bottom:2px}
+  .fnode{background:var(--card);border:1.5px solid var(--line2);border-radius:13px;padding:9px 13px;width:180px;
+    cursor:pointer;box-shadow:var(--sh);transition:transform .15s ease, border-color .2s, box-shadow .2s}
+  .fnode:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:0 6px 18px rgba(64,86,214,.15)}
+  .fnode b{font-size:12.5px;display:block;margin-bottom:2px}
+  .fnode small{font-size:10.5px;color:var(--muted);display:block;line-height:1.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fnode .ftags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+  .fnode .ftags i{font-style:normal;font-size:9.5px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--muted)}
+  .fnode.entry{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-soft),var(--card))}
+  .fnode.entry b{color:var(--accent)}
+  .fnode.end{border-color:#BBE3C9;background:linear-gradient(180deg,var(--live-soft),var(--card))}
+  .fnode.end small::before{content:'🏁 '}
+  svg.flines{position:absolute;top:0;right:0;z-index:1;pointer-events:none}
+  .fnode.flash,.card.flash{animation:flash 1.2s ease}
+  @keyframes flash{0%,60%{box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}100%{box-shadow:var(--sh)}}
   .livebadge .dot{animation:pulse 1.8s infinite}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
@@ -337,6 +360,26 @@
       <div class="meter"><i id="capBar"></i></div>
     </div>
     <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:flex-end">
+        <strong>نمودار بازه دلخواه <span class="hint" style="display:inline">— بازه به ۱۰ ستون مساوی تقسیم می‌شود</span></strong>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="grow"><label class="f" style="margin-top:0">از</label><input type="datetime-local" class="ltr" id="rangeFrom"></div>
+        <div class="grow"><label class="f" style="margin-top:0">تا</label><input type="datetime-local" class="ltr" id="rangeTo"></div>
+      </div>
+      <div class="row" style="margin-top:10px;justify-content:space-between">
+        <div class="presets">
+          <button onclick="rangePreset(6)">۶ ساعت اخیر</button>
+          <button onclick="rangePreset(24)">۲۴ ساعت اخیر</button>
+          <button onclick="rangePreset(24*7)">۷ روز اخیر</button>
+          <button onclick="rangePreset(24*30)">۳۰ روز اخیر</button>
+        </div>
+        <button class="primary" onclick="loadRangeChart()">نمایش نمودار</button>
+      </div>
+      <div class="bars" id="rangeBars" style="height:150px"></div>
+      <div class="hint" id="rangeInfo"></div>
+    </div>
+    <div class="card">
       <strong>امروز، ساعت به ساعت</strong>
       <div class="bars" id="hourBars"></div>
     </div>
@@ -357,7 +400,7 @@
       <div class="row" style="margin-top:8px">
         <div class="grow">
           <label class="f">نقطه شروع (اولین سوال)</label>
-          <select id="flowEntry"></select>
+          <select id="flowEntry" onchange="renderFlowDiagram()"></select>
         </div>
         <div class="grow">
           <label class="f">کلمات شروع‌کننده (با ویرگول جدا کنید)</label>
@@ -365,11 +408,19 @@
         </div>
       </div>
       <div class="hint">هر کس یکی از این کلمات را دایرکت کند، منو برایش باز می‌شود. دکمه‌های منو مقدم بر همه قوانین هستند.</div>
+      <label class="f">متن دکمه ورود به منو (برای بازدیدکننده‌های جدید دایرکت)</label>
+      <input type="text" id="flowMenuLabel" dir="auto" maxlength="80" placeholder="منوی آموزش‌ها و بررسی‌ها 📚">
+      <div class="hint">دکمه «⬅️ بازگشت» و «🏠 منوی اصلی» به صورت خودکار به همه مراحل اضافه می‌شود — لازم نیست خودتان بسازید.</div>
       <div class="row" style="margin-top:14px">
         <button class="primary" onclick="saveFlowSettings()">ذخیره تنظیمات مسیر</button>
-        <button onclick="setIcebreakers()" title="گزینه‌های نقطه شروع (حداکثر ۴ تا) به عنوان منوی پیش‌فرض برای بازدیدکننده‌های جدید دایرکت ثبت می‌شود">🧊 ثبت منوی شروع برای افراد جدید</button>
+        <button onclick="setIcebreakers()" title="یک دکمه با متن بالا برای بازدیدکننده‌های جدید دایرکت ثبت می‌شود؛ با لمس آن، منو باز می‌شود">🧊 ثبت دکمه ورود برای افراد جدید</button>
       </div>
       <pre class="out hidden" id="flowOut" style="margin-top:10px"></pre>
+    </div>
+
+    <h2>نقشه مسیر <small>نمای کلی از نقطه شروع تا پیام‌های پایانی — روی هر جعبه بزنید تا مستقیم به ویرایشش بروید</small></h2>
+    <div class="card">
+      <div class="fwrap" id="flowMap"><div class="hint">بعد از ساخت مراحل و انتخاب نقطه شروع، نقشه اینجا رسم می‌شود.</div></div>
     </div>
 
     <h2>پیام‌ها و سوال‌ها <small>هر کارت یک مرحله است؛ دکمه‌هایش به مرحله بعد اشاره می‌کنند. کارت بدون دکمه = پیام پایانی</small></h2>
@@ -809,7 +860,7 @@ async function loadAnalytics(){
   const hmax=Math.max(1,...hours);
   const nowH=new Date().getHours();
   document.getElementById('hourBars').innerHTML=hours.map((v,h)=>`
-    <div class="bcol ${h===nowH?'today':''}" title="${v} پاسخ"><i style="height:${Math.round(v/hmax*100)}%"></i>${h%4===0?`<span>${h}</span>`:'<span></span>'}</div>`).join('');
+    <div class="bcol ${h===nowH?'today':''}" title="${v} پاسخ"><b class="bval">${v?faNum(v):''}</b><i style="height:${Math.round(v/hmax*100)}%"></i>${h%4===0?`<span>${h}</span>`:'<span></span>'}</div>`).join('');
 
   // نمودار ۷ روز
   const {data:rows}=await sb.from('message_log').select('at').eq('status','sent').gte('at',iso(7*864e5)).limit(5000);
@@ -818,10 +869,40 @@ async function loadAnalytics(){
   (rows||[]).forEach(r=>{const k=r.at.slice(0,10);if(k in days)days[k]++;});
   const max=Math.max(1,...Object.values(days));
   document.getElementById('weekBars').innerHTML=labels.map((k,i)=>`
-    <div class="bcol ${i===6?'today':''}" title="${days[k]} پاسخ"><i style="height:${Math.round(days[k]/max*100)}%"></i><span>${k.slice(5)}</span></div>`).join('');
+    <div class="bcol ${i===6?'today':''}" title="${days[k]} پاسخ"><b class="bval">${days[k]?faNum(days[k]):''}</b><i style="height:${Math.round(days[k]/max*100)}%"></i><span>${k.slice(5)}</span></div>`).join('');
 
   clearTimeout(statTimer);
   statTimer=setTimeout(()=>{if(!document.getElementById('view-analytics').classList.contains('hidden'))loadAnalytics();},30000);
+}
+
+// ---------- نمودار بازه دلخواه ----------
+function toLocalInput(d){const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;}
+function rangePreset(hours){
+  const to=new Date(), from=new Date(Date.now()-hours*36e5);
+  document.getElementById('rangeFrom').value=toLocalInput(from);
+  document.getElementById('rangeTo').value=toLocalInput(to);
+  loadRangeChart();
+}
+async function loadRangeChart(){
+  const fv=document.getElementById('rangeFrom').value, tv=document.getElementById('rangeTo').value;
+  if(!fv||!tv) return rangePreset(24);
+  const from=new Date(fv), to=new Date(tv);
+  if(!(from<to)) return toast('بازه نامعتبر است — «از» باید قبل از «تا» باشد');
+  const {data,error}=await sb.from('message_log').select('at').eq('status','sent')
+    .gte('at',from.toISOString()).lte('at',to.toISOString()).limit(10000);
+  if(error) return toast(error.message);
+  const span=to-from, step=span/10, counts=Array(10).fill(0);
+  (data||[]).forEach(r=>{const i=Math.min(9,Math.floor((new Date(r.at)-from)/step));counts[i]++;});
+  const max=Math.max(1,...counts);
+  const fmt=d=>span<=48*36e5
+    ? d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'})
+    : d.toLocaleDateString('fa-IR',{month:'2-digit',day:'2-digit'});
+  document.getElementById('rangeBars').innerHTML=counts.map((v,i)=>{
+    const bs=new Date(from.getTime()+i*step);
+    return `<div class="bcol" title="${v} پاسخ"><b class="bval">${v?faNum(v):''}</b><i style="height:${Math.round(v/max*100)}%"></i><span>${fmt(bs)}</span></div>`;}).join('');
+  const totalR=(data||[]).length;
+  document.getElementById('rangeInfo').textContent=`مجموع ${faNum(totalR)} پاسخ در این بازه · هر ستون ${span<=48*36e5?faNum(Math.round(step/6e4))+' دقیقه':faNum((step/864e5).toLocaleString('fa-IR',{maximumFractionDigits:1}))+' روز'}`;
 }
 
 // ---------- فعالیت و بی‌صدا ----------
@@ -875,8 +956,10 @@ async function loadFlow(){
   flowNodes=data||[];
   document.getElementById('flowEnabled').checked=settings?.flow_enabled??false;
   document.getElementById('flowTriggers').value=(settings?.flow_triggers||[]).join(', ');
+  document.getElementById('flowMenuLabel').value=settings?.flow_menu_label||'منوی آموزش‌ها و بررسی‌ها 📚';
   renderFlowEntrySelect();
   renderFlowNodes();
+  renderFlowDiagram();
 }
 function nodeName(id){const n=flowNodes.find(x=>x.id===id);return n?n.name:'—';}
 function renderFlowEntrySelect(){
@@ -940,7 +1023,7 @@ async function saveFlowNode(id){
     message:c.querySelector('.n-msg').value, options};
   if(!upd.message.trim()) return toast('متن پیام را بنویسید');
   const {error}=await sb.from('flow_nodes').update(upd).eq('id',id);
-  if(!error){const n=flowNodes.find(x=>x.id===id);Object.assign(n,upd);renderFlowEntrySelect();renderFlowNodes();}
+  if(!error){const n=flowNodes.find(x=>x.id===id);Object.assign(n,upd);renderFlowEntrySelect();renderFlowNodes();renderFlowDiagram();}
   toast(error?error.message:'مرحله ذخیره شد ✓');
 }
 async function deleteFlowNode(id){
@@ -956,6 +1039,7 @@ async function saveFlowSettings(){
   const upd={flow_enabled:document.getElementById('flowEnabled').checked,
     flow_entry:document.getElementById('flowEntry').value||null,
     flow_triggers:document.getElementById('flowTriggers').value.split(/[,،]/).map(s=>s.trim()).filter(Boolean),
+    flow_menu_label:document.getElementById('flowMenuLabel').value.trim()||'منوی آموزش‌ها و بررسی‌ها 📚',
     updated_at:new Date().toISOString()};
   if(upd.flow_enabled&&!upd.flow_entry) return toast('نقطه شروع را انتخاب کنید');
   const {error}=await sb.from('settings').update(upd).eq('id',1);
@@ -972,6 +1056,70 @@ async function setIcebreakers(){
     const r=await fetch(`${fn}?admin=${encodeURIComponent(vt)}&action=icebreakers`);
     out.textContent=JSON.stringify(await r.json(),null,2);
   }catch(e){out.textContent='Request failed: '+e;}
+}
+
+// ---------- نقشه مسیر (bracket) ----------
+function renderFlowDiagram(){
+  const host=document.getElementById('flowMap'); if(!host) return;
+  const entry=document.getElementById('flowEntry').value||settings?.flow_entry;
+  if(!entry||!flowNodes.length){host.innerHTML='<div class="hint">بعد از ساخت مراحل و انتخاب نقطه شروع، نقشه اینجا رسم می‌شود.</div>';return;}
+  const byId=Object.fromEntries(flowNodes.map(n=>[n.id,n]));
+  if(!byId[entry]){host.innerHTML='<div class="hint">نقطه شروع نامعتبر است.</div>';return;}
+  const seen=new Set([entry]), levels=[], edges=[];
+  let cur=[entry];
+  while(cur.length&&levels.length<8){
+    levels.push(cur);
+    const nxt=[];
+    for(const id of cur){
+      for(const o of (byId[id].options||[])){
+        if(!o.next||!byId[o.next]) continue;
+        const ref=seen.has(o.next);
+        edges.push({from:id,to:o.next,ref});
+        if(!ref){seen.add(o.next);nxt.push(o.next);}
+      }
+    }
+    cur=nxt;
+  }
+  const lvlName=i=>i===0?'شروع':'مرحله '+faNum(i+1);
+  const card=(id)=>{const n=byId[id];const opts=(n.options||[]).filter(o=>o.label);
+    return `<div class="fnode ${id===entry?'entry':''} ${opts.length?'':'end'}" data-fnode="${id}" onclick="goToNode('${id}')">
+      <b>${esc(n.name)}</b><small>${esc((n.message||'').replace(/\n/g,' ').slice(0,34))||'—'}</small>
+      ${opts.length?`<div class="ftags">${opts.slice(0,4).map(o=>`<i>${esc(o.label)}</i>`).join('')}${opts.length>4?'<i>…</i>':''}</div>`:''}
+    </div>`;};
+  host.innerHTML=`<svg class="flines"></svg><div class="fcols">${
+    levels.map((col,i)=>`<div class="fcol"><div class="flvl">${lvlName(i)}</div>${col.map(card).join('')}</div>`).join('')
+  }</div>`;
+  const orphans=flowNodes.filter(n=>!seen.has(n.id));
+  if(orphans.length) host.innerHTML+=`<div class="hint" style="margin-top:8px">⚠️ مراحل وصل‌نشده به مسیر: ${orphans.map(n=>esc(n.name)).join('، ')}</div>`;
+  host._edges=edges;
+  requestAnimationFrame(drawFlowEdges);
+}
+function drawFlowEdges(){
+  const host=document.getElementById('flowMap'); if(!host||!host._edges) return;
+  const svg=host.querySelector('svg.flines'); if(!svg) return;
+  const w=host.scrollWidth,h=host.scrollHeight;
+  svg.setAttribute('width',w);svg.setAttribute('height',h);
+  svg.style.width=w+'px';svg.style.height=h+'px';
+  const hr=host.getBoundingClientRect();
+  const pos=id=>{const el=host.querySelector(`[data-fnode="${id}"]`);if(!el)return null;
+    const r=el.getBoundingClientRect();
+    return {l:r.left-hr.left+host.scrollLeft, r:r.right-hr.left+host.scrollLeft, y:r.top-hr.top+host.scrollTop+r.height/2};};
+  svg.innerHTML=host._edges.map(e=>{
+    const a=pos(e.from),b=pos(e.to); if(!a||!b) return '';
+    // RTL: از لبه چپ والد به لبه راست فرزند
+    const x1=a.l-2, y1=a.y, x2=b.r+2, y2=b.y, mx=(x1+x2)/2;
+    return `<path d="M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}"
+      fill="none" stroke="${e.ref?'var(--accent)':'#C6C9D6'}" stroke-width="2"
+      ${e.ref?'stroke-dasharray="5 5" opacity=".7"':''} />
+      <circle cx="${x2}" cy="${y2}" r="3.5" fill="${e.ref?'var(--accent)':'#C6C9D6'}"/>`;
+  }).join('');
+}
+window.addEventListener('resize',()=>{if(!document.getElementById('view-flow').classList.contains('hidden'))drawFlowEdges();});
+function goToNode(id){
+  const el=document.querySelector(`.card[data-nid="${id}"]`);
+  if(!el) return;
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
 }
 
 // ---------- راه‌اندازی ----------
