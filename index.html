@@ -146,6 +146,7 @@
   .fnode.end{border-color:#BBE3C9;background:linear-gradient(180deg,var(--live-soft),var(--card))}
   .fnode.end small::before{content:'🏁 '}
   svg.flines{position:absolute;top:0;left:0;z-index:1;pointer-events:none}
+  .fcols{position:relative}
   .fnode.flash,.card.flash{animation:flash 1.2s ease}
   /* سگمنت قوانین */
   .seg{display:flex;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:4px;gap:4px;width:fit-content}
@@ -768,7 +769,7 @@ function renderRuleMaps(){
         <b>📍 ${scope}</b>
         <small dir="auto">${pubs.length?'💬 '+faNum(pubs.length)+' کامنت عمومی':'بدون کامنت عمومی'}</small>
       </div>`;};
-    host.innerHTML=`<svg class="flines"></svg><div class="fcols">
+    host.innerHTML=`<div class="fcols"><svg class="flines"></svg>
       <div class="fcol"><div class="flvl">کلمه محرک</div>${rules.map(kwNode).join('')}</div>
       <div class="fcol"><div class="flvl">پاسخ در دایرکت</div>${rules.map(rsNode).join('')}</div>
       ${kind==='comment'?`<div class="fcol"><div class="flvl">پست و کامنت عمومی</div>${rules.map(pbNode).join('')}</div>`:''}
@@ -1054,8 +1055,9 @@ async function loadAnalytics(){
 
   // یک کوئری ۷ روزه، منبع همه نمودارهای خطی
   const {data:rows7}=await F(sb.from('message_log').select('at,kind,source').eq('status','sent')
-    .gte('at',iso(7*864e5))).limit(10000);
+    .gte('at',iso(7*864e5))).order('at',{ascending:false}).limit(10000);
   const R7=rows7||[];
+  const localDay=d=>{const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;};
 
   const [total,ai,dm,cm,hour,gated]=await Promise.all([
     count(base()),
@@ -1079,10 +1081,10 @@ async function loadAnalytics(){
   R7.filter(r=>r.at>=todayStart).forEach(r=>{hours[new Date(r.at).getHours()]++;});
   drawLine('hourLine',hours,hours.map((_,h)=>h%4===0?String(h).padStart(2,'0'):''),{hl:new Date().getHours()});
 
-  // سری‌های ۷ روزه
-  const dayKeys=[];for(let i=6;i>=0;i--)dayKeys.push(new Date(now-i*864e5).toISOString().slice(0,10));
+  // سری‌های ۷ روزه — بر اساس روز محلی، هماهنگ با شمارنده «پاسخ امروز»
+  const dayKeys=[];for(let i=6;i>=0;i--)dayKeys.push(localDay(new Date(now-i*864e5)));
   const series=filter=>{const m=Object.fromEntries(dayKeys.map(k=>[k,0]));
-    R7.filter(filter).forEach(r=>{const k=r.at.slice(0,10);if(k in m)m[k]++;});
+    R7.filter(filter).forEach(r=>{const k=localDay(new Date(r.at));if(k in m)m[k]++;});
     return dayKeys.map(k=>m[k]);};
   const dLbl=dayKeys.map(k=>k.slice(5));
   drawLine('weekLine',series(()=>true),dLbl,{hl:6});
@@ -1378,7 +1380,7 @@ function renderFlowDiagram(){
       if(op.next&&byId[op.next]) edges.push({from:o.id,to:op.next,ref:false});
     }
   }
-  host.innerHTML=`<svg class="flines"></svg><div class="fcols">${
+  host.innerHTML=`<div class="fcols"><svg class="flines"></svg>${
     levels.map((col,i)=>`<div class="fcol"><div class="flvl">${lvlName(i)}</div>${col.map(card).join('')}</div>`).join('')
   }${orphans.length?`<div class="fcol tray"><div class="flvl">🧩 جعبه‌های آزاد</div>${orphans.map(n=>card(n.id)).join('')}</div>`:''}</div>`;
   host._edges=edges; host._parents=parents; host._entry=entry; host._sel=null;
@@ -1428,13 +1430,13 @@ function drawFlowEdges(){ paintEdges(document.getElementById('flowMap'),'fnode')
 function paintEdges(host,attr){
   if(!host||!host._edges) return;
   const svg=host.querySelector('svg.flines'); if(!svg) return;
-  const w=host.scrollWidth,h=host.scrollHeight;
+  const box=svg.parentElement; // .fcols — جعبه محتوا؛ مختصات داخلش همیشه مثبت است، حتی در سرریز RTL موبایل
+  const w=box.scrollWidth||box.offsetWidth, h=box.scrollHeight||box.offsetHeight;
   svg.setAttribute('width',w);svg.setAttribute('height',h);
   svg.style.width=w+'px';svg.style.height=h+'px';
-  // مختصات بر اساس offset — مستقل از اسکرول و RTL، روی موبایل هم دقیق
   const pos=id=>{const el=host.querySelector(`[data-${attr}="${id}"]`);if(!el)return null;
     let x=0,y=0,p=el;
-    while(p&&p!==host){x+=p.offsetLeft;y+=p.offsetTop;p=p.offsetParent;}
+    while(p&&p!==box&&p!==host){x+=p.offsetLeft;y+=p.offsetTop;p=p.offsetParent;}
     return {l:x, r:x+el.offsetWidth, y:y+el.offsetHeight/2};};
   const chain=host._sel?(host._chain||[]):[];
   const chainEdge=(f,t)=>{const i=chain.indexOf(f);return i>-1&&chain[i+1]===t;};
@@ -1462,9 +1464,9 @@ window.addEventListener('resize',()=>{
 // ---------- اتصال با کشیدن فلش ----------
 let dragSrc=null;
 function hostContentXY(host,e){
-  const r=host.getBoundingClientRect();
-  let sx=host.scrollLeft; if(sx<0) sx=host.scrollWidth-host.clientWidth+sx; // RTL نرمال‌سازی
-  return {x:e.clientX-r.left+sx, y:e.clientY-r.top+host.scrollTop};
+  const box=host.querySelector('.fcols')||host;
+  const r=box.getBoundingClientRect(); // رکت خود جعبه محتوا — اسکرول و RTL خودبه‌خود لحاظ می‌شود
+  return {x:e.clientX-r.left, y:e.clientY-r.top};
 }
 function initDragConnect(){
   const host=document.getElementById('flowMap'); if(!host||host._dragInit) return;
@@ -1479,7 +1481,8 @@ function initDragConnect(){
     e.preventDefault();
     const svg=host.querySelector('svg.flines'); if(!svg) return;
     const src=host.querySelector(`[data-fnode="${dragSrc}"]`); if(!src) return;
-    let x0=0,y0=0,p=src; while(p&&p!==host){x0+=p.offsetLeft;y0+=p.offsetTop;p=p.offsetParent;}
+    const box=host.querySelector('.fcols')||host;
+    let x0=0,y0=0,p=src; while(p&&p!==box&&p!==host){x0+=p.offsetLeft;y0+=p.offsetTop;p=p.offsetParent;}
     const sxy={x:x0-2,y:y0+src.offsetHeight/2};
     const t=hostContentXY(host,e);
     let temp=svg.querySelector('#dragline');
