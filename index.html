@@ -180,6 +180,15 @@
   .edgemenu button:hover{background:var(--soft);color:var(--ink)}
   .edgemenu button.danger:hover{background:var(--danger-soft);color:var(--danger)}
   .fcol.tray{border:1.5px dashed var(--line2);border-radius:14px;padding:12px 10px 10px;background:var(--soft)}
+  .fnode.ghost{border:2px dashed var(--line2);background:transparent;color:var(--muted);display:flex;align-items:center;
+    justify-content:center;min-height:64px;font-weight:700;box-shadow:none}
+  .fnode.ghost:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);transform:none}
+  .rplus{position:absolute;bottom:-11px;left:50%;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;
+    background:var(--accent);color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;box-shadow:0 2px 8px rgba(64,86,214,.35);opacity:0;transition:opacity .2s,transform .15s;z-index:3;line-height:1}
+  .fnode:hover .rplus{opacity:1}
+  .rplus:hover{transform:translateX(-50%) scale(1.2)}
+  @media (hover:none){.rplus{opacity:.9}}
   .fcol.tray .flvl{color:var(--accent)}
   .fout{position:absolute;left:-8px;top:50%;transform:translateY(-50%);width:16px;height:16px;border-radius:50%;
     background:var(--card);border:2.5px solid var(--accent);cursor:crosshair;z-index:4;touch-action:none;
@@ -308,7 +317,7 @@
     </div>
     <div id="dmWrap" style="margin-top:12px">
       <div class="card">
-        <div class="maplbl">🗺️ نقشه قوانین دایرکت — کلمه محرک ← پاسخ · روی هر جعبه بزنید تا مسیرش روشن شود</div>
+        <div class="maplbl">🗺️ نقشه قوانین دایرکت — کلمه محرک ← پاسخ · «＋ قانون جدید» می‌سازد · + روی هر جعبه: کلمه یا پاسخ اضافه می‌کند · کلیک = روشن شدن مسیر · ✏️ ویرایش کامل</div>
         <div class="fwrap" id="ruleMapDm"></div>
       </div>
       <div id="dmRules"></div>
@@ -316,7 +325,7 @@
     </div>
     <div id="commentWrap" class="hidden" style="margin-top:12px">
       <div class="card">
-        <div class="maplbl">🗺️ نقشه قوانین کامنت — کلمه محرک ← پاسخ ← پست و کامنت عمومی</div>
+        <div class="maplbl">🗺️ نقشه قوانین کامنت — کلمه محرک ← پاسخ ← پست و کامنت عمومی · «＋ قانون جدید» می‌سازد · + روی هر جعبه اضافه می‌کند · ✏️ ویرایش کامل</div>
         <div class="fwrap" id="ruleMapCm"></div>
       </div>
       <div id="commentRules"></div>
@@ -751,26 +760,30 @@ function renderRuleMaps(){
   for(const kind of ['dm','comment']){
     const host=ruleMapHost(kind); if(!host) continue;
     const rules=allRules.filter(r=>r.kind===kind);
-    if(!rules.length){host.innerHTML='<div class="hint">هنوز قانونی نیست.</div>';host._edges=null;continue;}
+    if(!rules.length){host.innerHTML=`<div class="fcols"><div class="fcol"><div class="fnode ghost" onclick="quickAddRule('${kind}')">＋ اولین قانون را بسازید</div></div></div>`;host._edges=null;continue;}
     const kwNode=r=>`<div class="fnode entry ${r.active?'':'off'}" data-rnode="kw-${r.id}" onclick="selectRuleRoute('${kind}','${r.id}')">
         <span class="fedit" title="ویرایش قانون" onclick="event.stopPropagation();openRule('${kind}','${r.id}')">✏️</span>
+        <span class="rplus" title="افزودن کلمه کلیدی" onclick="event.stopPropagation();addKwToRule('${r.id}')">+</span>
         <b dir="auto">${esc(r.name)}</b>
         <div class="ftags">${(r.keywords||[]).slice(0,4).map(k=>`<i dir="auto">${esc(k)}</i>`).join('')}${(r.keywords||[]).length>4?'<i>…</i>':''}</div>
       </div>`;
     const rsNode=r=>{const snippet=r.use_ai?(r.ai_instruction||'پاسخ هوشمند'):(r.responses?.[0]||'—');
       return `<div class="fnode ${r.active?'':'off'} ${kind==='dm'?'end':''}" data-rnode="rs-${r.id}" onclick="selectRuleRoute('${kind}','${r.id}')">
         <span class="fedit" onclick="event.stopPropagation();openRule('${kind}','${r.id}')">✏️</span>
+        <span class="rplus" title="افزودن پاسخ جدید" onclick="event.stopPropagation();addRespToRule('${kind}','${r.id}')">+</span>
         <b>${r.use_ai?'🤖 هوش مصنوعی':'✉️ '+faNum((r.responses||[]).length)+' پاسخ'} ${r.require_follow?'🔒':''}</b>
         <small dir="auto">${esc(String(snippet).replace(/\n/g,' ').slice(0,34))}</small>
       </div>`;};
     const pbNode=r=>{const pubs=(r.public_replies&&r.public_replies.length)?r.public_replies:(r.public_reply?[r.public_reply]:[]);
       const scope=(r.media_ids||[]).length?faNum(r.media_ids.length)+' پست منتخب':'همه پست‌ها';
       return `<div class="fnode end ${r.active?'':'off'}" data-rnode="pb-${r.id}" onclick="selectRuleRoute('${kind}','${r.id}')">
+        <span class="rplus" title="افزودن کامنت عمومی" onclick="event.stopPropagation();addPubToRule('${r.id}')">+</span>
         <b>📍 ${scope}</b>
         <small dir="auto">${pubs.length?'💬 '+faNum(pubs.length)+' کامنت عمومی':'بدون کامنت عمومی'}</small>
       </div>`;};
     host.innerHTML=`<div class="fcols"><svg class="flines"></svg>
-      <div class="fcol"><div class="flvl">کلمه محرک</div>${rules.map(kwNode).join('')}</div>
+      <div class="fcol"><div class="flvl">کلمه محرک</div>${rules.map(kwNode).join('')}
+        <div class="fnode ghost" onclick="quickAddRule('${kind}')">＋ قانون جدید</div></div>
       <div class="fcol"><div class="flvl">پاسخ در دایرکت</div>${rules.map(rsNode).join('')}</div>
       ${kind==='comment'?`<div class="fcol"><div class="flvl">پست و کامنت عمومی</div>${rules.map(pbNode).join('')}</div>`:''}
     </div>`;
@@ -803,6 +816,61 @@ function selectRuleRoute(kind,id){
     el.classList.toggle('hl',on); el.classList.toggle('dim',!on);
   });
   paintEdges(host,'rnode');
+}
+// ساخت سریع قانون روی خود نقشه
+async function quickAddRule(kind){
+  let name=prompt('نام قانون جدید:');
+  if(!name||!name.trim()) return;
+  name=name.trim();
+  let kw=prompt('کلمه(های) کلیدی محرک — با ویرگول جدا کنید:');
+  if(!kw||!kw.trim()) return;
+  const keywords=kw.split(/[,،]/).map(s=>s.trim()).filter(Boolean);
+  if(!keywords.length) return toast('حداقل یک کلمه لازم است');
+  const dup=findDuplicate(null,kind,keywords,[]);
+  if(dup) return toast(`⚠️ کلمه «${dup.word}» قبلا در قانون «${dup.rule.name}» استفاده شده`);
+  const {data,error}=await sb.from('rules').insert({kind,name,keywords,active:false}).select().single();
+  if(error) return toast(error.message);
+  allRules.push(data); expandedRules.add(data.id);
+  renderRulesFromCache(); fillStatRules();
+  requestAnimationFrame(()=>{
+    const el=document.querySelector(`[data-rnode="kw-${data.id}"]`);
+    if(el){el.classList.add('flash');el.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});}
+  });
+  toast('قانون ساخته شد (خاموش) ✓ — با + جعبه پاسخ، پاسخ اضافه کنید و بعد روشنش کنید');
+}
+async function addKwToRule(id){
+  const r=allRules.find(x=>x.id===id); if(!r) return;
+  let kw=prompt('کلمه کلیدی جدید:');
+  if(!kw||!kw.trim()) return;
+  kw=kw.trim();
+  const dup=findDuplicate(id,r.kind,[kw],r.media_ids||[]);
+  if(dup) return toast(`⚠️ کلمه «${dup.word}» قبلا در قانون «${dup.rule.name}» استفاده شده`);
+  const keywords=[...(r.keywords||[]),kw];
+  const {error}=await sb.from('rules').update({keywords}).eq('id',id);
+  if(error) return toast(error.message);
+  r.keywords=keywords; renderRulesFromCache();
+  toast('کلمه اضافه شد ✓');
+}
+async function addRespToRule(kind,id){
+  const r=allRules.find(x=>x.id===id); if(!r) return;
+  if(r.use_ai) return toast('این قانون با هوش مصنوعی پاسخ می‌دهد — دستورش را با ✏️ ویرایش کنید');
+  const t=prompt('پاسخ جدید (برای پاسخ چندخطی از ✏️ استفاده کنید):');
+  if(!t||!t.trim()) return;
+  const responses=[...(r.responses||[]),t.trim()];
+  const {error}=await sb.from('rules').update({responses}).eq('id',id);
+  if(error) return toast(error.message);
+  r.responses=responses; renderRulesFromCache();
+  toast(`پاسخ اضافه شد ✓ (${faNum(responses.length)} پاسخ)`);
+}
+async function addPubToRule(id){
+  const r=allRules.find(x=>x.id===id); if(!r) return;
+  const t=prompt('کامنت عمومی جدید (زیر کامنت مخاطب ارسال می‌شود):');
+  if(!t||!t.trim()) return;
+  const public_replies=[...((r.public_replies&&r.public_replies.length)?r.public_replies:(r.public_reply?r.public_reply.split('\n').filter(Boolean):[])),t.trim()];
+  const {error}=await sb.from('rules').update({public_replies}).eq('id',id);
+  if(error) return toast(error.message);
+  r.public_replies=public_replies; renderRulesFromCache();
+  toast('کامنت عمومی اضافه شد ✓');
 }
 function openRule(kind,id){
   setRuleTab(kind);
@@ -1044,6 +1112,17 @@ function renderWords(){
 }
 
 // ---------- آمار زنده ----------
+// دریافت صفحه‌به‌صفحه — سقف ۱۰۰۰ ردیفی Supabase را دور می‌زند
+async function fetchPages(makeQ,maxPages=10){
+  const size=1000; let out=[];
+  for(let p=0;p<maxPages;p++){
+    const {data,error}=await makeQ().range(p*size,(p+1)*size-1);
+    if(error){toast(error.message);break;}
+    out=out.concat(data||[]);
+    if(!data||data.length<size) break;
+  }
+  return out;
+}
 async function loadAnalytics(){
   const rid=document.getElementById('statRule').value||null;
   const now=Date.now();
@@ -1053,23 +1132,24 @@ async function loadAnalytics(){
   const F=q=>rid?q.eq('matched_rule',rid):q;
   const base=()=>F(sb.from('message_log').select('id',{count:'exact',head:true}).eq('status','sent'));
 
-  // یک کوئری ۷ روزه، منبع همه نمودارهای خطی
-  const {data:rows7}=await F(sb.from('message_log').select('at,kind,source').eq('status','sent')
-    .gte('at',iso(7*864e5))).order('at',{ascending:false}).limit(10000);
-  const R7=rows7||[];
+  // داده ۷ روزه برای نمودارها — صفحه‌به‌صفحه تا ۱۰هزار ردیف
+  const week0=iso(7*864e5);
+  const R7=await fetchPages(()=>F(sb.from('message_log').select('at,kind,source').eq('status','sent')
+    .gte('at',week0)).order('at',{ascending:false}));
   const localDay=d=>{const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;};
 
-  const [total,ai,dm,cm,hour,gated]=await Promise.all([
+  const [total,ai,dm,cm,hour,gated,today,week]=await Promise.all([
     count(base()),
     count(base().eq('source','ai')),
     count(base().eq('kind','dm')),
     count(base().eq('kind','comment')),
     count(base().gte('at',iso(36e5))),
     count(F(sb.from('message_log').select('id',{count:'exact',head:true}).eq('status','follow-gated'))),
+    count(base().gte('at',todayStart)),
+    count(base().gte('at',week0)),
   ]);
-  const today=R7.filter(r=>r.at>=todayStart).length;
   const set=(id,v)=>document.getElementById(id).textContent=faNum(v);
-  set('stToday',today);set('stWeek',R7.length);set('stTotal',total);set('stAi',ai);
+  set('stToday',today);set('stWeek',week);set('stTotal',total);set('stAi',ai);
   set('stDm',dm);set('stCm',cm);set('stGated',gated);
 
   const cap=settings?.hourly_cap??150;
@@ -1093,8 +1173,8 @@ async function loadAnalytics(){
   drawLine('cmLine',series(r=>r.kind==='comment'),dLbl,{hl:6,color:'#D97706'});
 
   // قفل فالو، قانون به قانون + شمارنده تبدیل
-  const {data:gRows}=await sb.from('message_log').select('sender_id,at,status,matched_rule')
-    .in('status',['follow-gated','sent']).order('at').limit(8000);
+  const gRows=await fetchPages(()=>sb.from('message_log').select('sender_id,at,status,matched_rule')
+    .in('status',['follow-gated','sent']).order('at',{ascending:true}));
   const gatedBy={},convBy={},lastGate={};const convSet=new Set();
   (gRows||[]).forEach(r=>{
     if(r.status==='follow-gated'){lastGate[r.sender_id]=r.matched_rule;gatedBy[r.matched_rule]=(gatedBy[r.matched_rule]||0)+1;}
@@ -1174,11 +1254,12 @@ async function loadRangeChart(){
   const from=new Date(fv), to=new Date(tv);
   if(!(from<to)) return toast('بازه نامعتبر است — «از» باید قبل از «تا» باشد');
   const rid=document.getElementById('statRule').value;
-  let q=sb.from('message_log').select('at').eq('status','sent')
-    .gte('at',from.toISOString()).lte('at',to.toISOString()).limit(10000);
-  if(rid) q=q.eq('matched_rule',rid);
-  const {data,error}=await q;
-  if(error) return toast(error.message);
+  const data=await fetchPages(()=>{
+    let q=sb.from('message_log').select('at').eq('status','sent')
+      .gte('at',from.toISOString()).lte('at',to.toISOString()).order('at',{ascending:true});
+    if(rid) q=q.eq('matched_rule',rid);
+    return q;
+  });
   const span=to-from, step=span/10, counts=Array(10).fill(0);
   (data||[]).forEach(r=>{const i=Math.min(9,Math.floor((new Date(r.at)-from)/step));counts[i]++;});
   const fmt=d=>span<=48*36e5
