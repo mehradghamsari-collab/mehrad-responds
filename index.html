@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg:#F6F6F7; --card:#FFFFFF; --line:#E8E8EC; --line2:#DEDEE4;
@@ -295,6 +296,7 @@
       <button id="tab-flow" onclick="showTab('flow')">مسیر گفتگو</button>
       <button id="tab-words" onclick="showTab('words')">کلمات</button>
       <button id="tab-activity" onclick="showTab('activity')">فعالیت</button>
+      <button id="tab-export" onclick="showTab('export')">خروجی اکسل</button>
       <button id="tab-setup" onclick="showTab('setup')">راه‌اندازی</button>
     </nav>
   </header>
@@ -568,6 +570,50 @@
         <input type="text" class="ltr grow" id="muteId" placeholder="sender id (از جدول بالا)">
         <button onclick="muteSender()">🔇 بی‌صدا کن</button>
       </div>
+    </div>
+  </section>
+
+  <!-- خروجی اکسل -->
+  <section id="view-export" class="hidden">
+    <h2>خروجی اکسل <small>همه کامنت‌ها و دایرکت‌های دریافتی را برای تحلیل بعدی دانلود کنید</small></h2>
+    <div class="card">
+      <div class="row">
+        <div class="grow">
+          <label class="f" style="margin-top:0">نوع</label>
+          <select id="exKind" onchange="previewExport()">
+            <option value="">کامنت و دایرکت</option>
+            <option value="comment">فقط کامنت‌ها</option>
+            <option value="dm">فقط دایرکت‌ها</option>
+          </select>
+        </div>
+        <div class="grow">
+          <label class="f" style="margin-top:0">پست / ریلز / استوری</label>
+          <select id="exMedia" onchange="previewExport()"><option value="">همه</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="grow"><label class="f">از تاریخ</label><input type="date" class="ltr" id="exFrom" onchange="previewExport()"></div>
+        <div class="grow"><label class="f">تا تاریخ</label><input type="date" class="ltr" id="exTo" onchange="previewExport()"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="switch small"><input type="checkbox" id="exOnlyIncoming" checked onchange="previewExport()"><span class="track"></span><span class="knob"></span></label>
+        <div style="flex:1">فقط پیام‌های دارای متن دریافتی <div class="hint">خاموش کنید تا رویدادهای بدون متن (مثل ری‌اکشن‌ها) هم بیایند.</div></div>
+      </div>
+      <div class="row" style="margin-top:14px;justify-content:space-between">
+        <span class="hint" id="exInfo">—</span>
+        <div class="row">
+          <button onclick="previewExport()">🔄 شمارش</button>
+          <button class="primary" onclick="doExport()">⬇️ دانلود فایل اکسل</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow-x:auto">
+      <table><thead><tr><th>زمان</th><th>نوع</th><th>شناسه فرستنده</th><th>متن</th><th>پست/استوری</th></tr></thead>
+      <tbody id="exPreview"><tr><td colspan="5" class="hint" style="padding:18px">فیلترها را تنظیم کنید و «شمارش» را بزنید.</td></tr></tbody></table>
+    </div>
+    <div class="card">
+      <div class="hint">ستون‌های فایل: کد رویداد · زمان · نوع · شناسه فرستنده · نام کاربری · متن دریافتی · پاسخ ربات · قانون · وضعیت · شناسه پست/استوری · عنوان پست.
+      فایل با فرمت <code>.xlsx</code> ساخته می‌شود و مستقیم در Excel یا Google Sheets باز می‌شود (فارسی بدون مشکل).</div>
     </div>
   </section>
 
@@ -1675,6 +1721,86 @@ function goToNode(id){
   el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
 }
 
+// ---------- خروجی اکسل ----------
+let exRows=[];
+async function fillExportMedia(){
+  const sel=document.getElementById('exMedia'); if(!sel) return;
+  const cur=sel.value;
+  // شناسه‌هایی که واقعا در گزارش‌ها ثبت شده‌اند
+  const {data}=await sb.from('message_log').select('media_id').not('media_id','is',null).limit(5000);
+  const ids=[...new Set((data||[]).map(r=>r.media_id).filter(Boolean))];
+  await fetchMedia();
+  sel.innerHTML='<option value="">همه</option>'+ids.map(id=>{
+    const m=mediaInfo(id);
+    const label=m?m.cap:('شناسه '+id.slice(-8));
+    return `<option value="${id}" ${cur===id?'selected':''}>${esc(label)}</option>`;
+  }).join('');
+  if(!ids.length) sel.innerHTML+='<option value="" disabled>— هنوز رویدادی با پست ثبت نشده —</option>';
+}
+function exQuery(){
+  const kind=document.getElementById('exKind').value;
+  const media=document.getElementById('exMedia').value;
+  const from=document.getElementById('exFrom').value;
+  const to=document.getElementById('exTo').value;
+  return ()=>{
+    let q=sb.from('message_log').select('*').order('at',{ascending:false});
+    if(kind) q=q.eq('kind',kind); else q=q.in('kind',['dm','comment']);
+    if(media) q=q.eq('media_id',media);
+    if(from) q=q.gte('at',new Date(from+'T00:00:00').toISOString());
+    if(to) q=q.lte('at',new Date(to+'T23:59:59').toISOString());
+    return q;
+  };
+}
+async function previewExport(){
+  document.getElementById('exInfo').textContent='در حال شمارش…';
+  let rows=await fetchPages(exQuery());
+  if(document.getElementById('exOnlyIncoming').checked) rows=rows.filter(r=>(r.incoming||'').trim());
+  exRows=rows;
+  document.getElementById('exInfo').textContent=`${faNum(rows.length)} رویداد آماده دانلود است`;
+  document.getElementById('exPreview').innerHTML=rows.slice(0,25).map(r=>{
+    const m=r.media_id?mediaInfo(r.media_id):null;
+    return `<tr>
+      <td class="mono">${new Date(r.at).toLocaleString('fa-IR')}</td>
+      <td class="mono">${r.kind==='dm'?'دایرکت':'کامنت'}</td>
+      <td class="mono">${esc(r.sender_id||'')}</td>
+      <td dir="auto">${esc((r.incoming||'').slice(0,80))}</td>
+      <td dir="auto">${esc(m?m.cap:(r.media_id||'—'))}</td>
+    </tr>`;}).join('')
+    ||'<tr><td colspan="5" class="hint" style="padding:18px">رویدادی با این فیلترها پیدا نشد.</td></tr>';
+  if(rows.length>25) document.getElementById('exPreview').innerHTML+=`<tr><td colspan="5" class="hint" style="padding:12px">… و ${faNum(rows.length-25)} ردیف دیگر در فایل اکسل</td></tr>`;
+}
+async function doExport(){
+  if(!exRows.length) await previewExport();
+  if(!exRows.length) return toast('رویدادی برای خروجی گرفتن نیست');
+  const ruleName=id=>allRules.find(r=>r.id===id)?.name||'';
+  const aoa=exRows.map(r=>{
+    const m=r.media_id?mediaInfo(r.media_id):null;
+    const d=new Date(r.at);
+    return {
+      'کد رویداد': r.id,
+      'زمان': d.toLocaleString('fa-IR'),
+      'تاریخ میلادی': d.toISOString().slice(0,19).replace('T',' '),
+      'نوع': r.kind==='dm'?'دایرکت':'کامنت',
+      'شناسه فرستنده': r.sender_id||'',
+      'نام کاربری': r.sender_name||'',
+      'متن دریافتی': r.incoming||'',
+      'پاسخ ربات': r.reply||'',
+      'روش پاسخ': r.source||'',
+      'قانون': ruleName(r.matched_rule),
+      'وضعیت': r.status||'',
+      'شناسه پست/استوری': r.media_id||'',
+      'عنوان پست': m?m.cap:'',
+    };
+  });
+  const ws=XLSX.utils.json_to_sheet(aoa);
+  ws['!cols']=[{wch:12},{wch:20},{wch:20},{wch:9},{wch:20},{wch:16},{wch:52},{wch:52},{wch:10},{wch:20},{wch:14},{wch:20},{wch:26}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'messages');
+  const stamp=new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb,`mehrad-responds-${stamp}.xlsx`);
+  toast('فایل اکسل دانلود شد ✓');
+}
+
 // ---------- راه‌اندازی ----------
 function saveLocal(){
   localStorage.setItem('mr_fn',document.getElementById('fnUrl').value.trim().replace(/\/$/,''));
@@ -1694,12 +1820,13 @@ async function adminCall(action){
 
 // ---------- رابط ----------
 function showTab(t){
-  for(const v of ['rules','brain','analytics','flow','words','activity','setup']){
+  for(const v of ['rules','brain','analytics','flow','words','activity','export','setup']){
     document.getElementById('view-'+v).classList.toggle('hidden',v!==t);
     document.getElementById('tab-'+v).classList.toggle('on',v===t);
   }
   if(t==='activity')loadLog();
   if(t==='rules')requestAnimationFrame(drawRuleMaps);
+  if(t==='export'){fillExportMedia();}
   if(t==='analytics'){fillStatRules();loadAnalytics();rangePreset(24);}
   if(t==='words')renderWords();
   if(t==='flow'){loadFlow();initDragConnect();}
