@@ -384,6 +384,15 @@
         <div style="flex:1">هوش مصنوعی فقط شروع‌کننده گفتگو باشد
         <div class="hint">فقط اولین پاسخ هر نفر را هوش مصنوعی می‌دهد؛ اگر دوباره پیام دادند، ربات ساکت می‌ماند تا خودتان ادامه دهید. (بعد از ۲۴ ساعت سکوت، دوباره از اول شروع می‌کند)</div></div>
       </div>
+      <div class="row" style="margin-top:10px">
+        <label class="switch small"><input type="checkbox" id="thanksReply"><span class="track"></span><span class="knob"></span></label>
+        <div style="flex:1">پاسخ گرم به پیام‌های تشکر
+        <div class="hint">وقتی کسی فقط تشکر می‌کند (مرسی، ممنون، دمت گرم…) و هیچ قانونی نگرفته، هوش مصنوعی یک پاسخ کوتاه و دوستانه می‌دهد و گفتگو را ادامه نمی‌دهد. مستقل از سوییچ «پاسخ به همه دایرکت‌ها» کار می‌کند.</div></div>
+      </div>
+      <div id="thanksBox" class="hidden">
+        <label class="f">دستور به هوش مصنوعی برای پاسخ تشکر</label>
+        <textarea id="thanksInstruction" rows="2" dir="auto"></textarea>
+      </div>
 
       <label class="f">شخصیت و دستورالعمل‌ها (پرامپت سیستم)</label>
       <textarea id="sysPrompt" rows="6" dir="auto"></textarea>
@@ -512,12 +521,15 @@
         </div>
       </div>
       <div class="hint">هر کس یکی از این کلمات را دایرکت کند، منو برایش باز می‌شود. دکمه‌های منو مقدم بر همه قوانین هستند.</div>
-      <label class="f">متن دکمه ورود به منو (برای بازدیدکننده‌های جدید دایرکت)</label>
-      <input type="text" id="flowMenuLabel" dir="auto" maxlength="80" placeholder="منوی آموزش‌ها و بررسی‌ها 📚">
+      <label class="f">متن دکمه/منوی ورود (روی هر دو دکمه بالا اعمال می‌شود)</label>
+      <input type="text" id="flowMenuLabel" dir="auto" maxlength="30" placeholder="منوی آموزش‌ها و بررسی‌ها 📚">
+      <div class="hint">📌 <b>منوی همیشگی</b>: دکمه‌ای کنار کادر تایپ که برای <b>همه</b> مخاطبان (جدید و قدیمی) همیشه دیده می‌شود — بهترین گزینه برای شما.
+      🧊 <b>دکمه ورود</b>: بالای صفحه چت، ولی اینستاگرام فقط به افراد <b>جدید</b> نشانش می‌دهد. هر دو با لمس، همان منوی موضوعات را باز می‌کنند (مثل کلمه «منو»).</div>
       <div class="hint">دکمه «⬅️ بازگشت» و «🏠 منوی اصلی» به صورت خودکار به همه مراحل اضافه می‌شود — لازم نیست خودتان بسازید.</div>
       <div class="row" style="margin-top:14px">
         <button class="primary" onclick="saveFlowSettings()">ذخیره تنظیمات مسیر</button>
-        <button onclick="setIcebreakers()" title="یک دکمه با متن بالا برای بازدیدکننده‌های جدید دایرکت ثبت می‌شود؛ با لمس آن، منو باز می‌شود">🧊 ثبت دکمه ورود برای افراد جدید</button>
+        <button onclick="setPersistentMenu()" title="یک منوی همیشگی (☰) کنار کادر تایپ برای همه مخاطبان — جدید و قدیمی">📌 ثبت منوی همیشگی (برای همه)</button>
+        <button onclick="setIcebreakers()" title="دکمه بالای دایرکت — فقط برای افراد جدیدی که تا حالا پیام نداده‌اند">🧊 دکمه ورود افراد جدید</button>
       </div>
       <pre class="out hidden" id="flowOut" style="margin-top:10px"></pre>
     </div>
@@ -692,6 +704,10 @@ async function loadSettings(){
   setLive(data.bot_active);
   document.getElementById('aiFallback').checked=data.ai_fallback;
   document.getElementById('aiFirstOnly').checked=data.ai_first_only??false;
+  document.getElementById('thanksReply').checked=data.thanks_reply_enabled??false;
+  document.getElementById('thanksInstruction').value=data.thanks_instruction||'';
+  document.getElementById('thanksBox').classList.toggle('hidden',!(data.thanks_reply_enabled??false));
+  document.getElementById('thanksReply').onchange=e=>document.getElementById('thanksBox').classList.toggle('hidden',!e.target.checked);
   document.getElementById('llmProvider').value=data.llm_provider||'gemini';
   document.getElementById('ollamaUrl').value=data.ollama_url||'https://ollama.com';
   document.getElementById('ollamaModel').value=data.ollama_model||'gpt-oss:20b';
@@ -730,6 +746,8 @@ async function saveBrain(){
   const upd={
     ai_fallback:document.getElementById('aiFallback').checked,
     ai_first_only:document.getElementById('aiFirstOnly').checked,
+    thanks_reply_enabled:document.getElementById('thanksReply').checked,
+    thanks_instruction:document.getElementById('thanksInstruction').value,
     llm_provider:document.getElementById('llmProvider').value,
     ollama_url:document.getElementById('ollamaUrl').value.trim()||'https://ollama.com',
     ollama_model:document.getElementById('ollamaModel').value.trim()||'gpt-oss:20b',
@@ -1456,6 +1474,19 @@ async function saveFlowSettings(){
   const {error}=await sb.from('settings').update(upd).eq('id',1);
   if(!error) settings={...settings,...upd};
   toast(error?error.message:'تنظیمات مسیر ذخیره شد ✓');
+}
+async function setPersistentMenu(){
+  await saveFlowSettings();
+  const fn=localStorage.getItem('mr_fn'),vt=localStorage.getItem('mr_vt');
+  if(!fn||!vt) return toast('اول در تب «راه‌اندازی» آدرس فانکشن و توکن را وارد کنید');
+  const out=document.getElementById('flowOut');
+  out.classList.remove('hidden'); out.textContent='در حال ثبت منوی همیشگی…';
+  try{
+    const r=await fetch(`${fn}?admin=${encodeURIComponent(vt)}&action=persistent-menu`);
+    const d=await r.json();
+    out.textContent=JSON.stringify(d,null,2);
+    if(d.result||d.success) toast('منوی همیشگی ثبت شد ✓ — کنار کادر تایپ دایرکت دیده می‌شود');
+  }catch(e){out.textContent='Request failed: '+e;}
 }
 async function setIcebreakers(){
   await saveFlowSettings();
