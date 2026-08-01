@@ -372,6 +372,38 @@
       </div>
     </div>
 
+    <h2>خوش‌آمدگویی <small>لحظه‌ای که کسی برای اولین‌بار پیام می‌دهد — مجاز طبق سیاست متا، چون خودش شروع‌کننده بوده</small></h2>
+    <div class="card">
+      <div class="row">
+        <label class="switch small"><input type="checkbox" id="welcomeEnabled" onchange="document.getElementById('welcomeBox').classList.toggle('hidden',!this.checked)"><span class="track"></span><span class="knob"></span></label>
+        <div style="flex:1">خوش‌آمدگویی به اولین پیام هرکس فعال باشد
+        <div class="hint">⚠️ فقط وقتی خودِ کاربر اول پیام می‌دهد کار می‌کند — اینستاگرام اجازه پیام دادن به کسی که فقط فالو کرده یا هیچ‌وقت پیام نداده را نمی‌دهد.</div></div>
+      </div>
+      <div id="welcomeBox" class="hidden">
+        <label class="f">نوع خوش‌آمدگویی</label>
+        <select id="welcomeMode" onchange="toggleWelcomeMode()">
+          <option value="fixed">پاسخ‌های از پیش‌نوشته من (تصادفی انتخاب می‌شود)</option>
+          <option value="ai">هوش مصنوعی بنویسد</option>
+        </select>
+        <div id="welcomeFixedBox" style="margin-top:8px">
+          <label class="f">پیام‌های خوش‌آمدگویی — هر جعبه یک پیام کامل؛ هر بار یکی تصادفی انتخاب می‌شود</label>
+          <div id="welcomeListHost"></div>
+        </div>
+        <div id="welcomeAiBox" class="hidden" style="margin-top:8px">
+          <label class="f">دستور به هوش مصنوعی برای خوش‌آمدگویی</label>
+          <textarea id="welcomeAiInstruction" rows="2" dir="auto"></textarea>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <label class="switch small"><input type="checkbox" id="welcomeReels" onchange="document.getElementById('welcomeReelBox').classList.toggle('hidden',!this.checked)"><span class="track"></span><span class="knob"></span></label>
+          <div style="flex:1">چند تا از ویدیوهای اخیر هم پیشنهاد بده</div>
+        </div>
+        <div id="welcomeReelBox">
+          <label class="f">تعداد ویدیو</label>
+          <input type="number" id="welcomeReelCount" min="1" max="10" style="max-width:110px">
+        </div>
+      </div>
+    </div>
+
     <h2>شخصیت و دانش <small>ربات شما چه کسی است و چه می‌داند</small></h2>
     <div class="card">
       <div class="row">
@@ -706,6 +738,15 @@ async function loadSettings(){
   document.getElementById('aiFirstOnly').checked=data.ai_first_only??false;
   document.getElementById('thanksReply').checked=data.thanks_reply_enabled??false;
   document.getElementById('thanksInstruction').value=data.thanks_instruction||'';
+  document.getElementById('welcomeEnabled').checked=data.welcome_enabled??false;
+  document.getElementById('welcomeBox').classList.toggle('hidden',!(data.welcome_enabled??false));
+  document.getElementById('welcomeMode').value=data.welcome_mode||'fixed';
+  document.getElementById('welcomeAiInstruction').value=data.welcome_ai_instruction||'';
+  document.getElementById('welcomeListHost').innerHTML=respBoxes('welcome-list',data.welcome_messages||[],'پیام خوش‌آمدگویی — مثلا: سلام خوش اومدی! 👋 چطور می‌تونم کمکت کنم؟');
+  document.getElementById('welcomeReels').checked=data.welcome_show_reels??true;
+  document.getElementById('welcomeReelBox').classList.toggle('hidden',!(data.welcome_show_reels??true));
+  document.getElementById('welcomeReelCount').value=data.welcome_reel_count??3;
+  toggleWelcomeMode();
   document.getElementById('thanksBox').classList.toggle('hidden',!(data.thanks_reply_enabled??false));
   document.getElementById('thanksReply').onchange=e=>document.getElementById('thanksBox').classList.toggle('hidden',!e.target.checked);
   document.getElementById('llmProvider').value=data.llm_provider||'gemini';
@@ -740,6 +781,11 @@ async function toggleMaster(on){
   if(error){toast(error.message);return;}
   setLive(on); toast(on?'ربات فعال شد':'ربات متوقف شد');
 }
+function toggleWelcomeMode(){
+  const isAi=document.getElementById('welcomeMode').value==='ai';
+  document.getElementById('welcomeFixedBox').classList.toggle('hidden',isAi);
+  document.getElementById('welcomeAiBox').classList.toggle('hidden',!isAi);
+}
 async function saveBrain(){
   const num=(id,d)=>parseInt(document.getElementById(id).value)||d;
   const clamp=(id)=>Math.max(0,Math.min(120,parseInt(document.getElementById(id).value)||0));
@@ -748,6 +794,12 @@ async function saveBrain(){
     ai_first_only:document.getElementById('aiFirstOnly').checked,
     thanks_reply_enabled:document.getElementById('thanksReply').checked,
     thanks_instruction:document.getElementById('thanksInstruction').value,
+    welcome_enabled:document.getElementById('welcomeEnabled').checked,
+    welcome_mode:document.getElementById('welcomeMode').value,
+    welcome_ai_instruction:document.getElementById('welcomeAiInstruction').value,
+    welcome_messages:[...document.querySelectorAll('#welcomeListHost .welcome-list textarea')].map(t=>t.value.trim()).filter(Boolean),
+    welcome_show_reels:document.getElementById('welcomeReels').checked,
+    welcome_reel_count:Math.max(1,Math.min(10,parseInt(document.getElementById('welcomeReelCount').value)||3)),
     llm_provider:document.getElementById('llmProvider').value,
     ollama_url:document.getElementById('ollamaUrl').value.trim()||'https://ollama.com',
     ollama_model:document.getElementById('ollamaModel').value.trim()||'gpt-oss:20b',
@@ -1034,10 +1086,11 @@ function renderRules(kind,rules){
       </label>
     </div>
     <div class="follow-box ${r.require_follow?'':'hidden'}">
-      <label class="f">پیام برای غیر فالوورها (با دکمه فالو ارسال می‌شود)</label>
+      <label class="f">پیام برای غیر فالوورها (لینک پروفایل خودکار اضافه می‌شود)</label>
       <textarea class="r-fprompt" rows="2" dir="auto">${esc(r.follow_prompt||'')}</textarea>
-      <label class="f">متن روی دکمه فالو (حداکثر ۲۰ حرف)</label>
-      <input type="text" class="r-fbtn" maxlength="20" value="${esc(r.follow_button_text||'فالو کن ✨')}" dir="auto">
+      <label class="f">متن دکمه «فالو کردم» (حداکثر ۲۰ حرف)</label>
+      <input type="text" class="r-fbtn" maxlength="20" value="${esc(r.follow_button_text||'✅ فالو کردم، بررسی کن')}" dir="auto">
+      <div class="hint">مخاطب لینک پروفایل را می‌بیند، فالو می‌کند، و روی همین دکمه می‌زند — ربات همان لحظه فالو بودنش را چک می‌کند و بدون نیاز به تایپ دوباره کلمه، پاسخ اصلی را می‌فرستد.</div>
     </div>
     ${kind==='comment'?`
     <label class="f">پاسخ‌های عمومی زیر کامنت — هر جعبه یک پاسخ، تصادفی انتخاب می‌شود (خالی = فقط دایرکت)</label>
@@ -1098,7 +1151,7 @@ async function saveRule(id,kind){
     ai_instruction:c.querySelector('.r-aiinst')?.value??'',
     require_follow:c.querySelector('.r-follow').checked,
     follow_prompt:c.querySelector('.r-fprompt').value,
-    follow_button_text:c.querySelector('.r-fbtn').value.trim()||'فالو کن ✨',
+    follow_button_text:c.querySelector('.r-fbtn').value.trim()||'✅ فالو کردم، بررسی کن',
     active:c.querySelector('.r-active').checked,
   };
   if(kind==='comment'){
