@@ -297,6 +297,7 @@
       <button id="tab-words" onclick="showTab('words')">کلمات</button>
       <button id="tab-activity" onclick="showTab('activity')">فعالیت</button>
       <button id="tab-export" onclick="showTab('export')">خروجی اکسل</button>
+      <button id="tab-analyze" onclick="showTab('analyze')">تحلیل هوشمند</button>
       <button id="tab-setup" onclick="showTab('setup')">راه‌اندازی</button>
     </nav>
   </header>
@@ -658,6 +659,45 @@
     <div class="card">
       <div class="hint">ستون‌های فایل: کد رویداد · زمان · نوع · شناسه فرستنده · نام کاربری · متن دریافتی · پاسخ ربات · قانون · وضعیت · شناسه پست/استوری · عنوان پست.
       فایل با فرمت <code>.xlsx</code> ساخته می‌شود و مستقیم در Excel یا Google Sheets باز می‌شود (فارسی بدون مشکل).</div>
+    </div>
+  </section>
+
+  <!-- تحلیل هوشمند -->
+  <section id="view-analyze" class="hidden">
+    <h2>تحلیل هوشمند <small>سوال آزاد بپرسید — هوش مصنوعی متن پیام‌های واقعی را می‌خواند و نمودار میله‌ای می‌سازد</small></h2>
+    <div class="card">
+      <div class="row">
+        <div class="grow">
+          <label class="f" style="margin-top:0">نوع</label>
+          <select id="anKind">
+            <option value="">کامنت و دایرکت</option>
+            <option value="comment">فقط کامنت‌ها</option>
+            <option value="dm">فقط دایرکت‌ها</option>
+          </select>
+        </div>
+        <div class="grow">
+          <label class="f" style="margin-top:0">پست / ریلز / استوری</label>
+          <select id="anMedia"><option value="">همه</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="grow"><label class="f">از تاریخ</label><input type="date" class="ltr" id="anFrom"></div>
+        <div class="grow"><label class="f">تا تاریخ</label><input type="date" class="ltr" id="anTo"></div>
+      </div>
+      <label class="f">سوال شما</label>
+      <textarea id="anPrompt" rows="2" dir="auto" placeholder="مثلا: چند نفر گفتن رنگ مشکی می‌خوان در مقابل قهوه‌ای؟ یا: بیشترین سوال‌ها درباره چی بوده؟"></textarea>
+      <div class="row" style="margin-top:12px;justify-content:space-between">
+        <span class="hint" id="anStatus">—</span>
+        <button class="primary" onclick="runAnalysis()">🤖 تحلیل کن</button>
+      </div>
+    </div>
+    <div class="card hidden" id="anResult">
+      <strong id="anInsight" dir="auto" style="display:block;margin-bottom:10px"></strong>
+      <div id="anLegend" style="margin-bottom:8px"></div>
+      <div class="ltr" style="width:100%"><svg id="anChart" viewBox="0 0 720 260" style="width:100%;height:auto;display:block"></svg></div>
+    </div>
+    <div class="card">
+      <div class="hint">حداکثر ۵۰۰ پیام جدیدترین در هر تحلیل بررسی می‌شود — برای دقت بیشتر، بازه تاریخ یا پست را محدودتر کنید. این تحلیل همیشه از Gemini استفاده می‌کند (مستقل از انتخاب Ollama برای پاسخ‌گویی مشتری).</div>
     </div>
   </section>
 
@@ -1807,6 +1847,87 @@ function goToNode(id){
 
 // ---------- خروجی اکسل ----------
 let exRows=[];
+// ---------- تحلیل هوشمند ----------
+async function fillAnalysisMedia(){
+  const sel=document.getElementById('anMedia'); if(!sel) return;
+  const cur=sel.value;
+  await fetchMedia(); // پست‌ها و ریلزها (metadata + timestamp) را کش می‌کند
+  // جدیدترین رویداد ثبت‌شده برای هر شناسه پست/استوری
+  const {data}=await sb.from('message_log').select('media_id,at').not('media_id','is',null)
+    .order('at',{ascending:false}).limit(3000);
+  const lastSeen={};
+  (data||[]).forEach(r=>{ if(!(r.media_id in lastSeen)) lastSeen[r.media_id]=r.at; }); // اولین برخورد = جدیدترین (چون کوئری نزولی است)
+  const items=Object.keys(lastSeen).map(id=>{
+    const m=mediaInfo(id);
+    const meta=(mediaCache||[]).find(x=>x.id===id);
+    return { id, label: m?m.cap:('📖 استوری '+id.slice(-6)), ts: meta?.timestamp || lastSeen[id] };
+  });
+  items.sort((a,b)=>new Date(b.ts)-new Date(a.ts)); // جدید ← قدیم
+  sel.innerHTML='<option value="">همه پست‌ها، ریلزها و استوری‌ها</option>'
+    +items.map(it=>`<option value="${it.id}" ${cur===it.id?'selected':''}>${esc(it.label)}</option>`).join('');
+  if(!items.length) sel.innerHTML+='<option value="" disabled>— هنوز رویدادی با پست ثبت نشده —</option>';
+}
+const ANALYZE_CAP=500;
+async function runAnalysis(){
+  const promptText=document.getElementById('anPrompt').value.trim();
+  if(!promptText) return toast('سوالتان را بنویسید — مثلا: چند نفر رنگ مشکی خواستن در مقابل قهوه‌ای؟');
+  const fn=localStorage.getItem('mr_fn'),vt=localStorage.getItem('mr_vt');
+  if(!fn||!vt) return toast('اول در تب «راه‌اندازی» آدرس فانکشن و توکن را وارد کنید');
+  const kind=document.getElementById('anKind').value;
+  const media=document.getElementById('anMedia').value;
+  const from=document.getElementById('anFrom').value;
+  const to=document.getElementById('anTo').value;
+  document.getElementById('anStatus').textContent='در حال دریافت پیام‌ها…';
+  document.getElementById('anResult').classList.add('hidden');
+  let q=sb.from('message_log').select('at,incoming').order('at',{ascending:false}).limit(ANALYZE_CAP);
+  if(kind) q=q.eq('kind',kind); else q=q.in('kind',['dm','comment']);
+  if(media) q=q.eq('media_id',media);
+  if(from) q=q.gte('at',new Date(from+'T00:00:00').toISOString());
+  if(to) q=q.lte('at',new Date(to+'T23:59:59').toISOString());
+  const {data,error}=await q;
+  if(error){toast(error.message);document.getElementById('anStatus').textContent='';return;}
+  const rows=(data||[]).filter(r=>(r.incoming||'').trim()).map(r=>({at:r.at,text:r.incoming}));
+  if(!rows.length){toast('پیامی با این فیلترها پیدا نشد');document.getElementById('anStatus').textContent='';return;}
+  document.getElementById('anStatus').textContent=`در حال تحلیل ${faNum(rows.length)} پیام با هوش مصنوعی…`;
+  try{
+    const r=await fetch(fn,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':vt},
+      body:JSON.stringify({action:'analyze',prompt:promptText,rows})});
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||'خطای نامشخص');
+    document.getElementById('anStatus').textContent=`${faNum(rows.length)} پیام تحلیل شد`;
+    document.getElementById('anInsight').textContent=d.insight||'';
+    drawBarChart('anChart',d.categories||[]);
+    document.getElementById('anResult').classList.remove('hidden');
+  }catch(e){
+    toast('خطا در تحلیل: '+e.message);
+    document.getElementById('anStatus').textContent='';
+  }
+}
+function drawBarChart(svgId,categories){
+  const svg=document.getElementById(svgId); if(!svg) return;
+  if(!categories.length){svg.innerHTML='';document.getElementById('anLegend').innerHTML='<span class="hint">دسته‌ای پیدا نشد.</span>';return;}
+  const W=720,H=260,L=16,R=16,T=26,B=16;
+  const iw=W-L-R, ih=H-T-B;
+  const n=categories.length;
+  const max=Math.max(1,...categories.map(c=>c.count));
+  const gap=Math.max(10,iw*0.03), bw=Math.max(20,(iw-gap*(n-1))/n);
+  let bars='';
+  categories.forEach((c,i)=>{
+    const color=rulePalette[i%rulePalette.length];
+    const x=L+i*(bw+gap);
+    const h=Math.max(3,(c.count/max)*ih);
+    const y=T+ih-h;
+    bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="7" fill="${color}"><title dir="rtl">${esc(c.label)}: ${faNum(c.count)}</title></rect>
+      <text x="${(x+bw/2).toFixed(1)}" y="${(y-8).toFixed(1)}" text-anchor="middle" style="font-size:13px;font-weight:800;fill:var(--ink);font-family:var(--fa)">${faNum(c.count)}</text>`;
+  });
+  svg.innerHTML=`<line x1="${L}" y1="${T+ih}" x2="${W-R}" y2="${T+ih}" stroke="var(--line)"/>${bars}`;
+  document.getElementById('anLegend').innerHTML=categories.map((c,i)=>
+    `<span style="display:inline-flex;align-items:center;gap:6px;margin-inline-end:16px;margin-bottom:6px">
+      <i style="width:11px;height:11px;border-radius:3px;background:${rulePalette[i%rulePalette.length]};display:inline-block;flex:none"></i>
+      <span dir="auto" style="font-size:12.5px">${esc(c.label)} <b class="mono" style="color:var(--muted)">(${faNum(c.count)})</b></span>
+    </span>`).join('');
+}
+
 async function fillExportMedia(){
   const sel=document.getElementById('exMedia'); if(!sel) return;
   const cur=sel.value;
@@ -1904,13 +2025,14 @@ async function adminCall(action){
 
 // ---------- رابط ----------
 function showTab(t){
-  for(const v of ['rules','brain','analytics','flow','words','activity','export','setup']){
+  for(const v of ['rules','brain','analytics','flow','words','activity','export','analyze','setup']){
     document.getElementById('view-'+v).classList.toggle('hidden',v!==t);
     document.getElementById('tab-'+v).classList.toggle('on',v===t);
   }
   if(t==='activity')loadLog();
   if(t==='rules')requestAnimationFrame(drawRuleMaps);
   if(t==='export'){fillExportMedia();}
+  if(t==='analyze'){fillAnalysisMedia();}
   if(t==='analytics'){fillStatRules();loadAnalytics();rangePreset(24);}
   if(t==='words')renderWords();
   if(t==='flow'){loadFlow();initDragConnect();}
