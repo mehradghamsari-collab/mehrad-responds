@@ -1968,12 +1968,15 @@ async function runAnalysis(){
     const summary=partials.map(p=>`بخش ${p.batch}: `+p.categories.map(c=>`${c.label}=${c.count}`).join('، ')).join('\n');
     const fin=await callAdmin('reduce',{prompt:promptText,summary});
 
-    document.getElementById('anStatus').textContent=`${faNum(rows.length)} پیام در ${faNum(batches.length)} بخش تحلیل شد`
-      +(failed?` — ⚠️ ${faNum(failed)} بخش با خطا مواجه شد و نادیده گرفته شد`:'');
+    if(!fin.categories||!fin.categories.length){
+      document.getElementById('anStatus').innerHTML=`⚠️ ${faNum(rows.length)} پیام بررسی شد ولی هیچ‌کدام با این سوال مطابقت نداشت. سوال را کلی‌تر بپرسید یا بازه/پست را عوض کنید.`;
+    }else{
+      document.getElementById('anStatus').textContent=`✅ ${faNum(rows.length)} پیام در ${faNum(batches.length)} بخش تحلیل شد`
+        +(failed?` — ⚠️ ${faNum(failed)} بخش با خطا مواجه شد و نادیده گرفته شد`:'');
+    }
     renderChartResult(fin.insight,fin.categories);
   }catch(e){
-    toast('خطا در تحلیل: '+e.message);
-    document.getElementById('anStatus').textContent='';
+    document.getElementById('anStatus').innerHTML=`❌ خطا: ${esc(e.message)}`;
   }
   progWrap.style.display='none';
   btn.disabled=false;
@@ -1989,11 +1992,14 @@ async function runPastedAnalysis(){
   document.getElementById('anResult').classList.add('hidden');
   try{
     const fin=await callAdmin('reduce',{prompt:topic,summary:text});
-    document.getElementById('anPasteStatus').textContent='نمودار ساخته شد ✓';
+    if(!fin.categories||!fin.categories.length){
+      document.getElementById('anPasteStatus').innerHTML='⚠️ هوش مصنوعی نتوانست دسته‌ای از این متن استخراج کند — واضح‌تر یا با اعداد صریح‌تر بنویسید.';
+    }else{
+      document.getElementById('anPasteStatus').textContent='✅ نمودار ساخته شد';
+    }
     renderChartResult(fin.insight,fin.categories);
   }catch(e){
-    toast('خطا: '+e.message);
-    document.getElementById('anPasteStatus').textContent='';
+    document.getElementById('anPasteStatus').innerHTML=`❌ خطا: ${esc(e.message)}`;
   }
 }
 function drawBarChart(svgId,categories){
