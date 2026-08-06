@@ -664,40 +664,67 @@
 
   <!-- تحلیل هوشمند -->
   <section id="view-analyze" class="hidden">
-    <h2>تحلیل هوشمند <small>سوال آزاد بپرسید — هوش مصنوعی متن پیام‌های واقعی را می‌خواند و نمودار میله‌ای می‌سازد</small></h2>
-    <div class="card">
-      <div class="row">
-        <div class="grow">
-          <label class="f" style="margin-top:0">نوع</label>
-          <select id="anKind">
-            <option value="">کامنت و دایرکت</option>
-            <option value="comment">فقط کامنت‌ها</option>
-            <option value="dm">فقط دایرکت‌ها</option>
-          </select>
+    <h2>تحلیل هوشمند <small>سوال آزاد بپرسید — همه پیام‌های واقعی خوانده و در نمودار میله‌ای دسته‌بندی می‌شود</small></h2>
+    <div class="seg" style="margin-bottom:12px">
+      <button id="seg-an-auto" class="on" onclick="setAnMode('auto')">🤖 تحلیل خودکار روی همه پیام‌ها</button>
+      <button id="seg-an-paste" onclick="setAnMode('paste')">📋 چسباندن نتیجه آماده</button>
+    </div>
+
+    <!-- حالت خودکار -->
+    <div id="anAutoBox">
+      <div class="card">
+        <div class="row">
+          <div class="grow">
+            <label class="f" style="margin-top:0">نوع</label>
+            <select id="anKind">
+              <option value="">کامنت و دایرکت</option>
+              <option value="comment">فقط کامنت‌ها</option>
+              <option value="dm">فقط دایرکت‌ها</option>
+            </select>
+          </div>
+          <div class="grow">
+            <label class="f" style="margin-top:0">پست / ریلز / استوری</label>
+            <select id="anMedia"><option value="">همه</option></select>
+          </div>
         </div>
-        <div class="grow">
-          <label class="f" style="margin-top:0">پست / ریلز / استوری</label>
-          <select id="anMedia"><option value="">همه</option></select>
+        <div class="row">
+          <div class="grow"><label class="f">از تاریخ</label><input type="date" class="ltr" id="anFrom"></div>
+          <div class="grow"><label class="f">تا تاریخ</label><input type="date" class="ltr" id="anTo"></div>
         </div>
+        <label class="f">سوال شما</label>
+        <textarea id="anPrompt" rows="2" dir="auto" placeholder="مثلا: چند نفر گفتن رنگ مشکی می‌خوان در مقابل قهوه‌ای؟ یا: بیشترین سوال‌ها درباره چی بوده؟"></textarea>
+        <div class="row" style="margin-top:12px;justify-content:space-between">
+          <span class="hint" id="anStatus">—</span>
+          <button class="primary" id="anRunBtn" onclick="runAnalysis()">🤖 تحلیل کن</button>
+        </div>
+        <div class="meter" id="anProgWrap" style="display:none;margin-top:8px"><i id="anProg" style="width:0%"></i></div>
       </div>
-      <div class="row">
-        <div class="grow"><label class="f">از تاریخ</label><input type="date" class="ltr" id="anFrom"></div>
-        <div class="grow"><label class="f">تا تاریخ</label><input type="date" class="ltr" id="anTo"></div>
-      </div>
-      <label class="f">سوال شما</label>
-      <textarea id="anPrompt" rows="2" dir="auto" placeholder="مثلا: چند نفر گفتن رنگ مشکی می‌خوان در مقابل قهوه‌ای؟ یا: بیشترین سوال‌ها درباره چی بوده؟"></textarea>
-      <div class="row" style="margin-top:12px;justify-content:space-between">
-        <span class="hint" id="anStatus">—</span>
-        <button class="primary" onclick="runAnalysis()">🤖 تحلیل کن</button>
+      <div class="card">
+        <div class="hint">همه پیام‌های منطبق با فیلتر تحلیل می‌شوند — بدون محدودیت تعداد. برای این کار، پیام‌ها به بخش‌های ۲۰۰تایی تقسیم و جداگانه بررسی می‌شوند، بعد نتیجه‌ها با هم ادغام می‌شوند؛ برای چند هزار پیام ممکن است یکی-دو دقیقه طول بکشد. همیشه از Gemini استفاده می‌کند (مستقل از انتخاب Ollama برای پاسخ‌گویی مشتری).</div>
       </div>
     </div>
+
+    <!-- حالت چسباندن نتیجه آماده -->
+    <div id="anPasteBox" class="hidden">
+      <div class="card">
+        <label class="f" style="margin-top:0">موضوع / سوال (اختیاری، به هوش مصنوعی کمک می‌کند بهتر دسته‌بندی کند)</label>
+        <input type="text" id="anPasteTopic" dir="auto" placeholder="مثلا: مقایسه رنگ‌های درخواستی">
+        <label class="f">نتیجه تحلیلی که خودتان (مثلا با هوش مصنوعی روی گوشی یا کامپیوتر، بعد از دانلود اکسل از تب «خروجی اکسل») آماده کرده‌اید را اینجا بچسبانید</label>
+        <textarea id="anPasteText" rows="8" dir="auto" placeholder="مثلا:&#10;مشکی: ۴۲ نفر&#10;قهوه‌ای: ۲۸ نفر&#10;سایر رنگ‌ها: ۱۵ نفر&#10;&#10;یا حتی یک پاراگراف توضیحی — هوش مصنوعی از روی متن هم دسته‌ها را استخراج می‌کند."></textarea>
+        <div class="row" style="margin-top:12px;justify-content:space-between">
+          <span class="hint" id="anPasteStatus">—</span>
+          <button class="primary" onclick="runPastedAnalysis()">📊 ساخت نمودار از این متن</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hint">در این حالت، هوش مصنوعی هیچ پیام خامی نمی‌بیند — فقط همین متنی که چسباندید را می‌خواند و به دسته‌های شمارشی برای نمودار تبدیل می‌کند. برای دیتای خام، از تب «خروجی اکسل» فایل را دانلود کنید.</div>
+      </div>
+    </div>
+
     <div class="card hidden" id="anResult">
       <strong id="anInsight" dir="auto" style="display:block;margin-bottom:10px"></strong>
       <div id="anLegend" style="margin-bottom:8px"></div>
       <div class="ltr" style="width:100%"><svg id="anChart" viewBox="0 0 720 260" style="width:100%;height:auto;display:block"></svg></div>
-    </div>
-    <div class="card">
-      <div class="hint">حداکثر ۵۰۰ پیام جدیدترین در هر تحلیل بررسی می‌شود — برای دقت بیشتر، بازه تاریخ یا پست را محدودتر کنید. این تحلیل همیشه از Gemini استفاده می‌کند (مستقل از انتخاب Ollama برای پاسخ‌گویی مشتری).</div>
     </div>
   </section>
 
@@ -1867,7 +1894,28 @@ async function fillAnalysisMedia(){
     +items.map(it=>`<option value="${it.id}" ${cur===it.id?'selected':''}>${esc(it.label)}</option>`).join('');
   if(!items.length) sel.innerHTML+='<option value="" disabled>— هنوز رویدادی با پست ثبت نشده —</option>';
 }
-const ANALYZE_CAP=500;
+const BATCH_SIZE=200;
+function setAnMode(m){
+  document.getElementById('seg-an-auto').classList.toggle('on',m==='auto');
+  document.getElementById('seg-an-paste').classList.toggle('on',m==='paste');
+  document.getElementById('anAutoBox').classList.toggle('hidden',m!=='auto');
+  document.getElementById('anPasteBox').classList.toggle('hidden',m!=='paste');
+  document.getElementById('anResult').classList.add('hidden');
+}
+function renderChartResult(insight,categories){
+  document.getElementById('anInsight').textContent=insight||'';
+  drawBarChart('anChart',categories||[]);
+  document.getElementById('anResult').classList.remove('hidden');
+}
+async function callAdmin(action,payload){
+  const fn=localStorage.getItem('mr_fn'),vt=localStorage.getItem('mr_vt');
+  const r=await fetch(fn,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':vt},
+    body:JSON.stringify({action,...payload})});
+  const d=await r.json();
+  if(!d.ok) throw new Error(d.error||'خطای نامشخص');
+  return d;
+}
+// تحلیل خودکار روی همه پیام‌های منطبق با فیلتر — بدون سقف تعداد؛ به بخش‌های کوچک تقسیم می‌شود (MAP) و در آخر ادغام می‌شود (REDUCE)
 async function runAnalysis(){
   const promptText=document.getElementById('anPrompt').value.trim();
   if(!promptText) return toast('سوالتان را بنویسید — مثلا: چند نفر رنگ مشکی خواستن در مقابل قهوه‌ای؟');
@@ -1877,30 +1925,75 @@ async function runAnalysis(){
   const media=document.getElementById('anMedia').value;
   const from=document.getElementById('anFrom').value;
   const to=document.getElementById('anTo').value;
-  document.getElementById('anStatus').textContent='در حال دریافت پیام‌ها…';
+  const btn=document.getElementById('anRunBtn'); btn.disabled=true;
+  const progWrap=document.getElementById('anProgWrap'), prog=document.getElementById('anProg');
+  document.getElementById('anStatus').textContent='در حال دریافت همه پیام‌ها…';
   document.getElementById('anResult').classList.add('hidden');
-  let q=sb.from('message_log').select('at,incoming').order('at',{ascending:false}).limit(ANALYZE_CAP);
-  if(kind) q=q.eq('kind',kind); else q=q.in('kind',['dm','comment']);
-  if(media) q=q.eq('media_id',media);
-  if(from) q=q.gte('at',new Date(from+'T00:00:00').toISOString());
-  if(to) q=q.lte('at',new Date(to+'T23:59:59').toISOString());
-  const {data,error}=await q;
-  if(error){toast(error.message);document.getElementById('anStatus').textContent='';return;}
-  const rows=(data||[]).filter(r=>(r.incoming||'').trim()).map(r=>({at:r.at,text:r.incoming}));
-  if(!rows.length){toast('پیامی با این فیلترها پیدا نشد');document.getElementById('anStatus').textContent='';return;}
-  document.getElementById('anStatus').textContent=`در حال تحلیل ${faNum(rows.length)} پیام با هوش مصنوعی…`;
+  progWrap.style.display='none'; prog.style.width='0%';
   try{
-    const r=await fetch(fn,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':vt},
-      body:JSON.stringify({action:'analyze',prompt:promptText,rows})});
-    const d=await r.json();
-    if(!d.ok) throw new Error(d.error||'خطای نامشخص');
-    document.getElementById('anStatus').textContent=`${faNum(rows.length)} پیام تحلیل شد`;
-    document.getElementById('anInsight').textContent=d.insight||'';
-    drawBarChart('anChart',d.categories||[]);
-    document.getElementById('anResult').classList.remove('hidden');
+    let q=()=>{
+      let qq=sb.from('message_log').select('at,incoming').order('at',{ascending:false});
+      if(kind) qq=qq.eq('kind',kind); else qq=qq.in('kind',['dm','comment']);
+      if(media) qq=qq.eq('media_id',media);
+      if(from) qq=qq.gte('at',new Date(from+'T00:00:00').toISOString());
+      if(to) qq=qq.lte('at',new Date(to+'T23:59:59').toISOString());
+      return qq;
+    };
+    const all=await fetchPages(q);
+    const rows=all.filter(r=>(r.incoming||'').trim()).map(r=>({at:r.at,text:r.incoming}));
+    if(!rows.length){toast('پیامی با این فیلترها پیدا نشد');document.getElementById('anStatus').textContent='';btn.disabled=false;return;}
+
+    const batches=[]; for(let i=0;i<rows.length;i+=BATCH_SIZE) batches.push(rows.slice(i,i+BATCH_SIZE));
+    progWrap.style.display='block';
+    const partials=[]; let failed=0;
+    for(let i=0;i<batches.length;i++){
+      document.getElementById('anStatus').textContent=`در حال تحلیل بخش ${faNum(i+1)} از ${faNum(batches.length)} (${faNum(rows.length)} پیام)…`;
+      prog.style.width=Math.round((i/batches.length)*100)+'%';
+      try{
+        const d=await callAdmin('analyze-batch',{prompt:promptText,rows:batches[i]});
+        partials.push({batch:i+1,categories:d.categories||[]});
+      }catch(e){
+        try{ // یک بار تلاش دوباره برای این بخش
+          await new Promise(r=>setTimeout(r,1500));
+          const d=await callAdmin('analyze-batch',{prompt:promptText,rows:batches[i]});
+          partials.push({batch:i+1,categories:d.categories||[]});
+        }catch(e2){ failed++; }
+      }
+      await new Promise(r=>setTimeout(r,300)); // ملایم با سقف درخواست در دقیقه Gemini
+    }
+    prog.style.width='100%';
+    if(!partials.length) throw new Error('هیچ بخشی با موفقیت تحلیل نشد');
+
+    document.getElementById('anStatus').textContent='در حال نهایی‌سازی نمودار…';
+    const summary=partials.map(p=>`بخش ${p.batch}: `+p.categories.map(c=>`${c.label}=${c.count}`).join('، ')).join('\n');
+    const fin=await callAdmin('reduce',{prompt:promptText,summary});
+
+    document.getElementById('anStatus').textContent=`${faNum(rows.length)} پیام در ${faNum(batches.length)} بخش تحلیل شد`
+      +(failed?` — ⚠️ ${faNum(failed)} بخش با خطا مواجه شد و نادیده گرفته شد`:'');
+    renderChartResult(fin.insight,fin.categories);
   }catch(e){
     toast('خطا در تحلیل: '+e.message);
     document.getElementById('anStatus').textContent='';
+  }
+  progWrap.style.display='none';
+  btn.disabled=false;
+}
+// حالت چسباندن: متنی که خودِ کاربر از قبل تحلیل کرده — هوش مصنوعی فقط آن را به دسته‌های نموداری تبدیل می‌کند
+async function runPastedAnalysis(){
+  const text=document.getElementById('anPasteText').value.trim();
+  if(!text) return toast('متن نتیجه تحلیل را بچسبانید');
+  const fn=localStorage.getItem('mr_fn'),vt=localStorage.getItem('mr_vt');
+  if(!fn||!vt) return toast('اول در تب «راه‌اندازی» آدرس فانکشن و توکن را وارد کنید');
+  const topic=document.getElementById('anPasteTopic').value.trim();
+  document.getElementById('anPasteStatus').textContent='در حال ساخت نمودار…';
+  document.getElementById('anResult').classList.add('hidden');
+  try{
+    const fin=await callAdmin('reduce',{prompt:topic,summary:text});
+    document.getElementById('anPasteStatus').textContent='نمودار ساخته شد ✓';
+    renderChartResult(fin.insight,fin.categories);
+  }catch(e){
+    toast('خطا: '+e.message);
+    document.getElementById('anPasteStatus').textContent='';
   }
 }
 function drawBarChart(svgId,categories){
