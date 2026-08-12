@@ -466,6 +466,30 @@
       </div>
       <label class="f">سقف پاسخ در هر ساعت</label>
       <input type="number" id="hourlyCap" min="10" max="1000">
+
+      <div class="row" style="margin-top:14px">
+        <label class="switch small"><input type="checkbox" id="likeDm" onchange="document.getElementById('likeReactionBox').classList.toggle('hidden',!this.checked)"><span class="track"></span><span class="knob"></span></label>
+        <div style="flex:1">لایک خودکار پیام‌های دایرکت
+        <div class="hint">به محض رسیدن هر دایرکت (حتی اولین پیام یک نفر، حتی اگر در حالت درخواست باشد)، ربات آن را با یک ری‌اکشن لایک می‌کند — کاملا جدا از پاسخ دادن، و مستقل از سقف ساعتی بالا.</div></div>
+      </div>
+      <div id="likeReactionBox" class="hidden">
+        <label class="f">نوع ری‌اکشن</label>
+        <select id="likeReaction">
+          <option value="love">❤️ قلب (پیشنهادی)</option>
+          <option value="like">👍 لایک</option>
+          <option value="haha">😆 خنده</option>
+          <option value="wow">😮 تعجب</option>
+          <option value="sad">😢 ناراحت</option>
+          <option value="angry">😠 عصبانی</option>
+        </select>
+        <label class="f">تاخیر قبل از لایک (ثانیه) — کمینه و بیشینه</label>
+        <div class="row">
+          <div class="grow"><input type="number" id="likeDelayMin" min="0" max="120" placeholder="مثلا 3"></div>
+          <div class="grow"><input type="number" id="likeDelayMax" min="0" max="120" placeholder="مثلا 15"></div>
+        </div>
+        <div class="hint">ربات زمانی تصادفی در این بازه صبر می‌کند تا لایک زدن فوری و رباتیک به نظر نرسد. برای «شبیه یک دقیقه» هر دو را نزدیک ۶۰ بگذارید. هر دو صفر = لایک فوری.</div>
+      </div>
+
       <div style="margin-top:16px"><button class="primary fullm" onclick="saveBrain()">ذخیره همه تنظیمات</button></div>
     </div>
   </section>
@@ -700,7 +724,7 @@
         <div class="meter" id="anProgWrap" style="display:none;margin-top:8px"><i id="anProg" style="width:0%"></i></div>
       </div>
       <div class="card">
-        <div class="hint">همه پیام‌های منطبق با فیلتر تحلیل می‌شوند — بدون محدودیت تعداد. برای این کار، پیام‌ها به بخش‌های ۲۰۰تایی تقسیم و جداگانه بررسی می‌شوند، بعد نتیجه‌ها با هم ادغام می‌شوند؛ برای چند هزار پیام ممکن است یکی-دو دقیقه طول بکشد. همیشه از Gemini استفاده می‌کند (مستقل از انتخاب Ollama برای پاسخ‌گویی مشتری).</div>
+        <div class="hint">همه پیام‌های منطبق با فیلتر تحلیل می‌شوند — بدون محدودیت تعداد. پیام‌ها به بخش‌های ۲۰۰تایی تقسیم و با فاصله امن (۴ ثانیه) بررسی می‌شوند تا به سقف درخواست Gemini نخوریم؛ برای چند هزار پیام چند دقیقه طول می‌کشد. اگر سقف روزانه پلن Gemini پر شود، تحلیل با نتیجه جزئی متوقف می‌شود. همیشه از Gemini استفاده می‌کند (مستقل از انتخاب Ollama برای پاسخ‌گویی مشتری).</div>
       </div>
     </div>
 
@@ -832,6 +856,11 @@ async function loadSettings(){
   document.getElementById('cDelayMin').value=data.comment_delay_min??0;
   document.getElementById('cDelayMax').value=data.comment_delay_max??0;
   document.getElementById('hourlyCap').value=data.hourly_cap??150;
+  document.getElementById('likeDm').checked=data.like_dm_enabled??false;
+  document.getElementById('likeReactionBox').classList.toggle('hidden',!(data.like_dm_enabled??false));
+  document.getElementById('likeReaction').value=data.like_dm_reaction||'love';
+  document.getElementById('likeDelayMin').value=data.like_delay_min??3;
+  document.getElementById('likeDelayMax').value=data.like_delay_max??15;
 }
 function toggleOllamaFields(){
   const isO=document.getElementById('llmProvider').value==='ollama';
@@ -879,6 +908,10 @@ async function saveBrain(){
     reply_delay_min:clamp('delayMin'), reply_delay_max:clamp('delayMax'),
     comment_delay_min:clamp('cDelayMin'), comment_delay_max:clamp('cDelayMax'),
     hourly_cap:Math.max(10,num('hourlyCap',150)),
+    like_dm_enabled:document.getElementById('likeDm').checked,
+    like_dm_reaction:document.getElementById('likeReaction').value,
+    like_delay_min:Math.max(0,Math.min(120,parseInt(document.getElementById('likeDelayMin').value)||0)),
+    like_delay_max:Math.max(0,Math.min(120,parseInt(document.getElementById('likeDelayMax').value)||0)),
     updated_at:new Date().toISOString(),
   };
   const {error}=await sb.from('settings').update(upd).eq('id',1);
@@ -1945,21 +1978,34 @@ async function runAnalysis(){
 
     const batches=[]; for(let i=0;i<rows.length;i+=BATCH_SIZE) batches.push(rows.slice(i,i+BATCH_SIZE));
     progWrap.style.display='block';
-    const partials=[]; let failed=0;
+    const partials=[]; let failed=0, quotaStreak=0;
     for(let i=0;i<batches.length;i++){
       document.getElementById('anStatus').textContent=`در حال تحلیل بخش ${faNum(i+1)} از ${faNum(batches.length)} (${faNum(rows.length)} پیام)…`;
       prog.style.width=Math.round((i/batches.length)*100)+'%';
       try{
         const d=await callAdmin('analyze-batch',{prompt:promptText,rows:batches[i]});
         partials.push({batch:i+1,categories:d.categories||[]});
+        quotaStreak=0;
       }catch(e){
-        try{ // یک بار تلاش دوباره برای این بخش
-          await new Promise(r=>setTimeout(r,1500));
-          const d=await callAdmin('analyze-batch',{prompt:promptText,rows:batches[i]});
-          partials.push({batch:i+1,categories:d.categories||[]});
-        }catch(e2){ failed++; }
+        const isQuota=/429|سقف درخواست/i.test(e.message||'');
+        if(isQuota) quotaStreak++; else { failed++; quotaStreak=0; }
+        if(isQuota && quotaStreak>=2){
+          // سهمیه واقعا پر است (نه فقط یک نوسان لحظه‌ای) — به‌جای هدر رفتن روی بقیه بخش‌ها، همین‌جا متوقف می‌شویم
+          progWrap.style.display='none'; btn.disabled=false;
+          document.getElementById('anStatus').innerHTML=`❌ سقف درخواست Gemini پر شد — ${faNum(partials.length)} از ${faNum(batches.length)} بخش قبل از این تحلیل شدند.`
+            +` کمی بعد دوباره امتحان کنید، بازه/پست را کوچک‌تر کنید، یا سهمیه پلن Gemini را افزایش دهید.`
+            +` <a href="https://ai.google.dev/gemini-api/docs/rate-limits" target="_blank" rel="noopener" style="color:var(--accent)">جزئیات محدودیت‌ها</a>`;
+          if(partials.length){
+            try{
+              const summary=partials.map(p=>`بخش ${p.batch}: `+p.categories.map(c=>`${c.label}=${c.count}`).join('، ')).join('\n');
+              const fin=await callAdmin('reduce',{prompt:promptText,summary});
+              renderChartResult((fin.insight||'')+' — ⚠️ نتیجه جزئی، همه پیام‌ها بررسی نشدند',fin.categories);
+            }catch{}
+          }
+          return;
+        }
       }
-      await new Promise(r=>setTimeout(r,300)); // ملایم با سقف درخواست در دقیقه Gemini
+      await new Promise(r=>setTimeout(r,4000)); // فاصله امن بین بخش‌ها متناسب با سقف درخواست در دقیقه Gemini
     }
     prog.style.width='100%';
     if(!partials.length) throw new Error('هیچ بخشی با موفقیت تحلیل نشد');
