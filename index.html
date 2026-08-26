@@ -469,8 +469,8 @@
 
       <div class="row" style="margin-top:14px">
         <label class="switch small"><input type="checkbox" id="likeDm" onchange="document.getElementById('likeReactionBox').classList.toggle('hidden',!this.checked)"><span class="track"></span><span class="knob"></span></label>
-        <div style="flex:1">لایک خودکار پیام‌های دایرکت
-        <div class="hint">به محض رسیدن هر دایرکت (حتی اولین پیام یک نفر، حتی اگر در حالت درخواست باشد)، ربات آن را با یک ری‌اکشن لایک می‌کند — کاملا جدا از پاسخ دادن، و مستقل از سقف ساعتی بالا.</div></div>
+        <div style="flex:1">لایک خودکار اولین دایرکت هرکس
+        <div class="hint">فقط اولین دایرکتی که یک نفر می‌فرستد لایک می‌خورد (حتی اگر پیامش در حالت درخواست باشد) — پیام‌های بعدی همان شخص دیگر لایک نمی‌گیرند. کاملا جدا از پاسخ دادن، و مستقل از سقف ساعتی بالا.</div></div>
       </div>
       <div id="likeReactionBox" class="hidden">
         <label class="f">نوع ری‌اکشن</label>
@@ -979,9 +979,11 @@ function renderRuleMaps(){
     if(!rules.length){host.innerHTML=`<div class="fcols"><div class="fcol"><div class="fnode ghost" onclick="quickAddRule('${kind}')">＋ اولین قانون را بسازید</div></div></div>`;host._edges=null;continue;}
     const kwNode=r=>`<div class="fnode entry ${r.active?'':'off'}" data-rnode="kw-${r.id}" onclick="selectRuleRoute('${kind}','${r.id}')">
         <span class="fedit" title="ویرایش قانون" onclick="event.stopPropagation();openRule('${kind}','${r.id}')">✏️</span>
-        <span class="rplus" title="افزودن کلمه کلیدی" onclick="event.stopPropagation();addKwToRule('${r.id}')">+</span>
+        ${r.catch_all?'':`<span class="rplus" title="افزودن کلمه کلیدی" onclick="event.stopPropagation();addKwToRule('${r.id}')">+</span>`}
         <b dir="auto">${esc(r.name)}</b>
-        <div class="ftags">${(r.keywords||[]).slice(0,4).map(k=>`<i dir="auto">${esc(k)}</i>`).join('')}${(r.keywords||[]).length>4?'<i>…</i>':''}</div>
+        ${r.catch_all
+          ? '<div class="ftags"><i>🌀 هر کامنتی</i></div>'
+          : `<div class="ftags">${(r.keywords||[]).slice(0,4).map(k=>`<i dir="auto">${esc(k)}</i>`).join('')}${(r.keywords||[]).length>4?'<i>…</i>':''}</div>`}
       </div>`;
     const rsNode=r=>{const snippet=r.use_ai?(r.ai_instruction||'پاسخ هوشمند'):(r.responses?.[0]||'—');
       return `<div class="fnode ${r.active?'':'off'} ${kind==='dm'?'end':''}" data-rnode="rs-${r.id}" onclick="selectRuleRoute('${kind}','${r.id}')">
@@ -1043,7 +1045,7 @@ async function quickAddRule(kind){
   const keywords=kw.split(/[,،]/).map(s=>s.trim()).filter(Boolean);
   if(!keywords.length) return toast('حداقل یک کلمه لازم است');
   const dup=findDuplicate(null,kind,keywords,[]);
-  if(dup) return toast(`⚠️ کلمه «${dup.word}» قبلا در قانون «${dup.rule.name}» استفاده شده`);
+  if(dup) return toast(`⚠️ ${dup.reason} — با قانون «${dup.rule.name}»`);
   const {data,error}=await sb.from('rules').insert({kind,name,keywords,active:false}).select().single();
   if(error) return toast(error.message);
   allRules.push(data); expandedRules.add(data.id);
@@ -1060,7 +1062,7 @@ async function addKwToRule(id){
   if(!kw||!kw.trim()) return;
   kw=kw.trim();
   const dup=findDuplicate(id,r.kind,[kw],r.media_ids||[]);
-  if(dup) return toast(`⚠️ کلمه «${dup.word}» قبلا در قانون «${dup.rule.name}» استفاده شده`);
+  if(dup) return toast(`⚠️ ${dup.reason} — با قانون «${dup.rule.name}»`);
   const keywords=[...(r.keywords||[]),kw];
   const {error}=await sb.from('rules').update({keywords}).eq('id',id);
   if(error) return toast(error.message);
@@ -1158,6 +1160,13 @@ function renderRules(kind,rules){
     <div class="rbody">
     <label class="f">نام قانون</label>
     <input type="text" class="r-name" value="${esc(r.name)}" dir="auto">
+    ${kind==='comment'?`
+    <div class="row" style="margin-top:10px">
+      <label class="switch small"><input type="checkbox" class="r-catchall" ${r.catch_all?'checked':''} onchange="toggleCatchAll(this)"><span class="track"></span><span class="knob"></span></label>
+      <div style="flex:1">پاسخ به هر کامنتی 🌀 <span class="hint" style="display:inline">(بدون نیاز به کلمه کلیدی)</span>
+      <div class="hint">فرقی نمی‌کند کامنت چه باشد — فقط باید پایین حداقل یک پست/ریلز انتخاب شود.</div></div>
+    </div>`:''}
+    <div class="kw-box ${(kind==='comment'&&r.catch_all)?'hidden':''}">
     <label class="f">کلمات کلیدی محرک (با ویرگول جدا کنید)</label>
     <input type="text" class="r-keywords" value="${esc(r.keywords.join(', '))}" dir="auto">
     <div class="row" style="margin-top:8px">
@@ -1166,6 +1175,9 @@ function renderRules(kind,rules){
         <option value="exact" ${r.match_type==='exact'?'selected':''}>پیام دقیقا خود کلمه باشد</option>
         <option value="starts_with" ${r.match_type==='starts_with'?'selected':''}>پیام با کلمه شروع شود</option>
       </select>
+    </div>
+    </div>
+    <div class="row" style="margin-top:8px">
       <label class="row" style="gap:8px;font-size:13px">
         <label class="switch small"><input type="checkbox" class="r-useai" ${r.use_ai?'checked':''} onchange="toggleAiFields(this)"><span class="track"></span><span class="knob"></span></label>
         هوش مصنوعی پاسخ بنویسد
@@ -1214,6 +1226,10 @@ function toggleAiFields(el){
   c.querySelector('.ai-off').classList.toggle('hidden',el.checked);
   c.querySelector('.ai-on').classList.toggle('hidden',!el.checked);
 }
+function toggleCatchAll(el){
+  const c=el.closest('.card');
+  c.querySelector('.kw-box').classList.toggle('hidden',el.checked);
+}
 async function addRule(kind){
   const {data,error}=await sb.from('rules').insert({kind,name:kind==='dm'?'قانون دایرکت جدید':'قانون کامنت جدید',active:false}).select().single();
   if(error) return toast(error.message);
@@ -1224,24 +1240,33 @@ async function addRule(kind){
   toast('قانون اضافه شد (خاموش) — پرش کنید، ذخیره و روشن کنید');
 }
 // جلوگیری از کلمه تکراری با محدوده مشترک
-function findDuplicate(id,kind,keywords,mediaIds){
+function findDuplicate(id,kind,keywords,mediaIds,catchAll=false){
   const norm=k=>k.toLowerCase().trim();
   const mine=new Set(keywords.map(norm));
   for(const r of allRules){
     if(r.id===id||r.kind!==kind) continue;
+    if(kind==='dm'){
+      const theirs=(r.keywords||[]).map(norm);
+      const shared=theirs.filter(k=>mine.has(k));
+      if(shared.length) return {rule:r,reason:`کلمه «${shared[0]}» تکراری است`};
+      continue;
+    }
+    const a=mediaIds||[], b=r.media_ids||[];
+    const overlap=a.length===0||b.length===0||a.some(x=>b.includes(x));
+    if(!overlap) continue;
+    if(catchAll||r.catch_all){
+      return {rule:r,reason:(catchAll&&r.catch_all)?'هر دو قانون «پاسخ به هر کامنتی» روی یک پست هستند':'این قانون با یک قانون «پاسخ به هر کامنتی» روی همان پست تداخل دارد'};
+    }
     const theirs=(r.keywords||[]).map(norm);
     const shared=theirs.filter(k=>mine.has(k));
-    if(!shared.length) continue;
-    if(kind==='dm') return {rule:r,word:shared[0]};
-    const a=mediaIds||[], b=r.media_ids||[];
-    const overlap = a.length===0 || b.length===0 || a.some(x=>b.includes(x));
-    if(overlap) return {rule:r,word:shared[0]};
+    if(shared.length) return {rule:r,reason:`کلمه «${shared[0]}» با محدوده مشترک تکراری است`};
   }
   return null;
 }
 async function saveRule(id,kind){
   const c=document.querySelector(`.card[data-id="${id}"]`);
   const boxes=cls=>[...c.querySelectorAll('.'+cls+' textarea')].map(t=>t.value.trim()).filter(Boolean);
+  const catchAll=kind==='comment'&&(c.querySelector('.r-catchall')?.checked??false);
   const upd={
     name:c.querySelector('.r-name').value.trim()||'بدون نام',
     keywords:c.querySelector('.r-keywords').value.split(/[,،]/).map(s=>s.trim()).filter(Boolean),
@@ -1255,13 +1280,18 @@ async function saveRule(id,kind){
     active:c.querySelector('.r-active').checked,
   };
   if(kind==='comment'){
+    upd.catch_all=catchAll;
     upd.public_replies=boxes('pub-list');
     upd.media_ids=c.querySelector('.r-media').value.split(',').map(s=>s.trim()).filter(Boolean);
   }
-  if(!upd.keywords.length) return toast('حداقل یک کلمه کلیدی وارد کنید');
+  if(catchAll){
+    if(!upd.media_ids.length) return toast('برای «پاسخ به هر کامنتی» باید حداقل یک پست/ریلز انتخاب کنید — وگرنه روی همه پست‌هایتان اجرا می‌شود');
+  }else{
+    if(!upd.keywords.length) return toast('حداقل یک کلمه کلیدی وارد کنید (یا سوییچ «پاسخ به هر کامنتی» را روشن کنید)');
+  }
   if(!upd.use_ai&&!upd.responses.length) return toast('حداقل یک پاسخ بنویسید یا هوش مصنوعی را روشن کنید');
-  const dup=findDuplicate(id,kind,upd.keywords,upd.media_ids);
-  if(dup) return toast(`⚠️ ذخیره نشد: کلمه «${dup.word}» قبلا در قانون «${dup.rule.name}» با محدوده مشترک استفاده شده — باعث پاسخ‌های تداخلی می‌شود`);
+  const dup=findDuplicate(id,kind,upd.keywords,upd.media_ids,catchAll);
+  if(dup) return toast(`⚠️ ذخیره نشد: ${dup.reason} — با قانون «${dup.rule.name}» تداخل دارد و باعث پاسخ‌های دوگانه می‌شود`);
   const {error}=await sb.from('rules').update(upd).eq('id',id);
   toast(error?error.message:'قانون ذخیره شد ✓');
   if(!error) loadRules();
@@ -1305,6 +1335,7 @@ function renderWords(){
   const rows=[]; const seen={};
   const ordered=[...allRules].sort((a,b)=>a.kind===b.kind?new Date(a.created_at)-new Date(b.created_at):(a.kind==='dm'?-1:1));
   for(const r of ordered){
+    if(r.catch_all){ rows.push({k:'🌀 هر کامنتی',r,catchAll:true}); continue; }
     for(const k of (r.keywords||[])){
       const key=r.kind+':'+k.toLowerCase().trim();
       seen[key]=(seen[key]||0)+1;
@@ -1313,9 +1344,9 @@ function renderWords(){
   }
   body.innerHTML=rows
     .filter(x=>!q||x.k.toLowerCase().includes(q)||x.r.name.toLowerCase().includes(q))
-    .map(({k,r})=>{
+    .map(({k,r,catchAll})=>{
       const c=ruleColor(r.id);
-      const dupBadge=seen[r.kind+':'+k.toLowerCase().trim()]>1?' <span class="tag failed">تکراری!</span>':'';
+      const dupBadge=(!catchAll&&seen[r.kind+':'+k.toLowerCase().trim()]>1)?' <span class="tag failed">تکراری!</span>':'';
       const scope=r.kind==='comment'?((r.media_ids||[]).length?faNum((r.media_ids||[]).length)+' پست':'همه پست‌ها'):'—';
       return `<tr style="border-inline-start:4px solid ${c}">
         <td dir="auto"><strong>${esc(k)}</strong>${dupBadge}</td>
