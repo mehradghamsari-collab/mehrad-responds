@@ -1164,7 +1164,7 @@ function renderRules(kind,rules){
     <div class="row" style="margin-top:10px">
       <label class="switch small"><input type="checkbox" class="r-catchall" ${r.catch_all?'checked':''} onchange="toggleCatchAll(this)"><span class="track"></span><span class="knob"></span></label>
       <div style="flex:1">پاسخ به هر کامنتی 🌀 <span class="hint" style="display:inline">(بدون نیاز به کلمه کلیدی)</span>
-      <div class="hint">فرقی نمی‌کند کامنت چه باشد — فقط باید پایین حداقل یک پست/ریلز انتخاب شود.</div></div>
+      <div class="hint">فرقی نمی‌کند کامنت چه باشد — فقط باید پایین حداقل یک پست/ریلز انتخاب شود. اگر قانون کلمه‌کلیدی‌دار دیگری هم روی همین پست فعال باشد، آن قانون همیشه اولویت دارد و این فقط برای بقیه کامنت‌ها اجرا می‌شود.</div></div>
     </div>`:''}
     <div class="kw-box ${(kind==='comment'&&r.catch_all)?'hidden':''}">
     <label class="f">کلمات کلیدی محرک (با ویرگول جدا کنید)</label>
@@ -1254,9 +1254,10 @@ function findDuplicate(id,kind,keywords,mediaIds,catchAll=false){
     const a=mediaIds||[], b=r.media_ids||[];
     const overlap=a.length===0||b.length===0||a.some(x=>b.includes(x));
     if(!overlap) continue;
-    if(catchAll||r.catch_all){
-      return {rule:r,reason:(catchAll&&r.catch_all)?'هر دو قانون «پاسخ به هر کامنتی» روی یک پست هستند':'این قانون با یک قانون «پاسخ به هر کامنتی» روی همان پست تداخل دارد'};
+    if(catchAll&&r.catch_all){
+      return {rule:r,reason:'هر دو قانون «پاسخ به هر کامنتی» روی یک پست هستند'};
     }
+    if(catchAll||r.catch_all) continue; // کلمه‌کلیدی همیشه اولویت دارد؛ «هر کامنتی» فقط پشتیبان است — تداخل واقعی وجود ندارد
     const theirs=(r.keywords||[]).map(norm);
     const shared=theirs.filter(k=>mine.has(k));
     if(shared.length) return {rule:r,reason:`کلمه «${shared[0]}» با محدوده مشترک تکراری است`};
