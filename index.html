@@ -1583,6 +1583,51 @@ function renderFlowEntrySelect(){
 function nextSelect(current){
   return '<option value="">— انتخاب مرحله بعد —</option>'+flowNodes.map(n=>`<option value="${n.id}" ${current===n.id?'selected':''}>${esc(n.name)}</option>`).join('');
 }
+function videoRows(videos){
+  return (videos||[]).map(v=>`
+    <div class="resp-item vid-row" style="align-items:center">
+      <img class="v-thumb" src="${esc(v.image_url||'')}" style="width:56px;height:42px;object-fit:cover;border-radius:8px;background:var(--soft);flex:none${v.image_url?'':';visibility:hidden'}" onerror="this.style.visibility='hidden'">
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <input type="text" class="v-url ltr" dir="ltr" placeholder="لینک ویدیوی یوتیوب (youtube.com/watch?v=... یا youtu.be/...)" value="${esc(v.video_url||'')}" oninput="updateVideoThumb(this)">
+        <input type="text" class="v-title" dir="auto" maxlength="80" placeholder="عنوان ویدیو" value="${esc(v.title||'')}">
+      </div>
+      <button type="button" class="rm" onclick="this.closest('.vid-row').remove()">✕</button>
+    </div>`).join('');
+}
+function extractYouTubeId(url){
+  try{
+    const u=new URL(url.trim());
+    if(u.hostname.includes('youtu.be')) return u.pathname.slice(1).split('/')[0]||null;
+    if(u.hostname.includes('youtube.com')){
+      if(u.pathname==='/watch') return u.searchParams.get('v');
+      const m=u.pathname.match(/\/(shorts|embed)\/([\w-]{6,})/);
+      if(m) return m[2];
+    }
+  }catch(e){}
+  return null;
+}
+function ytThumb(url){
+  const id=url?extractYouTubeId(url):null;
+  return id?`https://img.youtube.com/vi/${id}/hqdefault.jpg`:'';
+}
+function updateVideoThumb(input){
+  const img=input.closest('.vid-row').querySelector('.v-thumb');
+  const t=ytThumb(input.value);
+  img.src=t; img.style.visibility=t?'visible':'hidden';
+}
+function addFlowVideo(btn){
+  const list=btn.closest('.card').querySelector('.vid-list');
+  if(list.children.length>=10) return toast('حداکثر ۱۰ ویدیو در هر اسلاید (محدودیت اینستاگرام)');
+  const div=document.createElement('div'); div.className='resp-item vid-row';
+  div.style.alignItems='center';
+  div.innerHTML=`<img class="v-thumb" style="width:56px;height:42px;object-fit:cover;border-radius:8px;background:var(--soft);flex:none;visibility:hidden" onerror="this.style.visibility='hidden'">
+    <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+      <input type="text" class="v-url ltr" dir="ltr" placeholder="لینک ویدیوی یوتیوب (youtube.com/watch?v=... یا youtu.be/...)" oninput="updateVideoThumb(this)">
+      <input type="text" class="v-title" dir="auto" maxlength="80" placeholder="عنوان ویدیو">
+    </div>
+    <button type="button" class="rm" onclick="this.closest('.vid-row').remove()">✕</button>`;
+  list.appendChild(div);
+}
 function renderFlowNodes(){
   const host=document.getElementById('flowNodes');
   if(!flowNodes.length){host.innerHTML='<div class="card hint">هنوز مرحله‌ای ندارید. اولین سوال را بسازید — مثلا «سلام! دنبال چی هستی؟» با دکمه‌های «عطر 🌸» و «بازی 🎲».</div>';return;}
@@ -1604,6 +1649,9 @@ function renderFlowNodes(){
     <label class="f">دکمه‌ها — تا ۳۰ عدد؛ در چت ۱۰تا ۱۰تا با دکمه «➕ موارد بیشتر» نمایش داده می‌شود (بدون دکمه = پیام پایانی)</label>
     <div class="opt-list">${rows}</div>
     <button type="button" class="addbtn" style="margin-top:2px" onclick="addFlowOption(this)">+ افزودن دکمه</button>
+    <label class="f">ویدیوهای اسلایدی (اختیاری) — کاور خودکار از خود لینک یوتیوب ساخته می‌شود؛ کاربر با کشیدن انگشت راست/چپ آن‌ها را می‌بیند</label>
+    <div class="vid-list">${videoRows(n.videos)}</div>
+    <button type="button" class="addbtn" style="margin-top:2px" onclick="addFlowVideo(this)">+ افزودن ویدیو</button>
     <div class="row" style="margin-top:14px">
       <button class="primary" onclick="saveFlowNode('${n.id}')">ذخیره مرحله</button>
       <button class="danger" onclick="deleteFlowNode('${n.id}')">حذف</button>
@@ -1633,8 +1681,16 @@ async function saveFlowNode(id){
     next:r.querySelector('.o-next').value||null,
   })).filter(o=>o.label);
   if(options.some(o=>!o.next)) return toast('هر دکمه باید به یک مرحله بعدی وصل باشد');
+  const vidRows=[...c.querySelectorAll('.vid-list .vid-row')];
+  const badRow=vidRows.find(r=>{const u=r.querySelector('.v-url').value.trim();return u&&!ytThumb(u);});
+  if(badRow) return toast('یکی از لینک‌های ویدیو معتبر نیست — لینک کامل youtube.com یا youtu.be را وارد کنید');
+  const videos=vidRows.map(r=>({
+    video_url:r.querySelector('.v-url').value.trim(),
+    title:r.querySelector('.v-title').value.trim(),
+    image_url:ytThumb(r.querySelector('.v-url').value.trim()),
+  })).filter(v=>v.video_url&&v.image_url);
   const upd={name:c.querySelector('.n-name').value.trim()||'بدون نام',
-    message:c.querySelector('.n-msg').value, options};
+    message:c.querySelector('.n-msg').value, options, videos};
   if(!upd.message.trim()) return toast('متن پیام را بنویسید');
   const {error}=await sb.from('flow_nodes').update(upd).eq('id',id);
   if(!error){const n=flowNodes.find(x=>x.id===id);Object.assign(n,upd);renderFlowEntrySelect();renderFlowNodes();renderFlowDiagram();}
