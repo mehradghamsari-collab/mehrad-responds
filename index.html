@@ -210,6 +210,14 @@
   .hbar.g{background:#B9BECF}
   .hbar.c{background:var(--live)}
   .hleg{display:flex;gap:16px;font-size:11.5px;color:var(--muted);margin-bottom:6px}
+  .cmrow{transition:opacity .3s}
+  .cmrow.sent{opacity:.55}
+  .cmhead{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+  .cmhead b{font-size:13px}
+  .cmorig{background:var(--soft);border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:10px;color:var(--muted)}
+  .cmctl{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+  .cmctl label{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+  .cmctl input[type=checkbox]{width:18px;height:18px;accent-color:var(--live)}
   .hleg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-start:4px;vertical-align:-1px}
 
   @keyframes flash{0%,60%{box-shadow:0 0 0 4px var(--accent-soft);border-color:var(--accent)}100%{box-shadow:var(--sh)}}
@@ -298,6 +306,7 @@
       <button id="tab-activity" onclick="showTab('activity')">فعالیت</button>
       <button id="tab-export" onclick="showTab('export')">خروجی اکسل</button>
       <button id="tab-analyze" onclick="showTab('analyze')">تحلیل هوشمند</button>
+      <button id="tab-bulk" onclick="showTab('bulk')">پاسخ گروهی کامنت‌ها</button>
       <button id="tab-setup" onclick="showTab('setup')">راه‌اندازی</button>
     </nav>
   </header>
@@ -750,6 +759,29 @@
       <div id="anLegend" style="margin-bottom:8px"></div>
       <div class="ltr" style="width:100%"><svg id="anChart" viewBox="0 0 720 260" style="width:100%;height:auto;display:block"></svg></div>
     </div>
+  </section>
+
+  <!-- پاسخ گروهی کامنت‌ها -->
+  <section id="view-bulk" class="hidden">
+    <h2>پاسخ گروهی کامنت‌ها <small>یک پست را انتخاب کنید، به هوش مصنوعی بگویید چطور جواب بدهد، هر پاسخ را قبل از ارسال ببینید و ویرایش کنید</small></h2>
+    <div class="card">
+      <label class="f" style="margin-top:0">پست / ریلز</label>
+      <select id="bulkMedia" onchange="document.getElementById('bulkFetchBtn').disabled=!this.value"></select>
+      <div class="row" style="margin-top:12px">
+        <button id="bulkFetchBtn" class="primary" onclick="fetchBulkComments()" disabled>دریافت کامنت‌های این پست</button>
+        <span class="hint" id="bulkFetchInfo"></span>
+      </div>
+    </div>
+    <div class="card hidden" id="bulkInstructionCard">
+      <label class="f" style="margin-top:0">دستور به هوش مصنوعی — چطور به این کامنت‌ها جواب بدهد</label>
+      <textarea id="bulkInstruction" rows="3" dir="auto" placeholder="مثلا: به هرکس درباره قیمت پرسیده بگو دایرکت بده، به تعریف‌ها با یک تشکر گرم جواب بده، به سوال‌های فنی با توضیح کوتاه پاسخ بده."></textarea>
+      <div class="row" style="margin-top:10px;justify-content:space-between">
+        <span class="hint" id="bulkDraftStatus">—</span>
+        <button class="primary" onclick="draftAllComments()">🤖 پیشنهاد پاسخ برای همه</button>
+      </div>
+      <div class="meter" id="bulkProgWrap" style="display:none;margin-top:8px"><i id="bulkProg" style="width:0%"></i></div>
+    </div>
+    <div id="bulkList"></div>
   </section>
 
   <!-- راه‌اندازی -->
@@ -1583,16 +1615,24 @@ function renderFlowEntrySelect(){
 function nextSelect(current){
   return '<option value="">— انتخاب مرحله بعد —</option>'+flowNodes.map(n=>`<option value="${n.id}" ${current===n.id?'selected':''}>${esc(n.name)}</option>`).join('');
 }
+function vidRowInner(v){
+  const cover=v.image_url||'';
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:none">
+      <img class="v-thumb" src="${esc(cover)}" style="width:56px;height:42px;object-fit:cover;border-radius:8px;background:var(--soft);flex:none${cover?'':';visibility:hidden'}" onerror="this.style.visibility='hidden'">
+      <label class="v-upload-btn" style="font-size:10px;color:var(--accent);cursor:pointer;text-align:center">📤 آپلود
+        <input type="file" accept="image/*" style="display:none" onchange="uploadCover(this)">
+      </label>
+      <span class="v-upload-status hint" style="font-size:9px;text-align:center"></span>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+      <input type="text" class="v-url ltr" dir="ltr" placeholder="لینک یوتیوب یا لینک پست/ریلز اینستاگرام خودتان" value="${esc(v.video_url||'')}" oninput="updateVideoThumb(this)">
+      <input type="text" class="v-title" dir="auto" maxlength="80" placeholder="عنوان ویدیو" value="${esc(v.title||'')}">
+      <span class="hint v-manual-hint ${cover?'hidden':'hidden'}" style="color:#B45309">کاور خودکار پیدا نشد — از دکمه «📤 آپلود» عکس دلخواه اضافه کنید</span>
+    </div>
+    <button type="button" class="rm" onclick="this.closest('.vid-row').remove()">✕</button>`;
+}
 function videoRows(videos){
-  return (videos||[]).map(v=>`
-    <div class="resp-item vid-row" style="align-items:center">
-      <img class="v-thumb" src="${esc(v.image_url||'')}" style="width:56px;height:42px;object-fit:cover;border-radius:8px;background:var(--soft);flex:none${v.image_url?'':';visibility:hidden'}" onerror="this.style.visibility='hidden'">
-      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-        <input type="text" class="v-url ltr" dir="ltr" placeholder="لینک ویدیوی یوتیوب (youtube.com/watch?v=... یا youtu.be/...)" value="${esc(v.video_url||'')}" oninput="updateVideoThumb(this)">
-        <input type="text" class="v-title" dir="auto" maxlength="80" placeholder="عنوان ویدیو" value="${esc(v.title||'')}">
-      </div>
-      <button type="button" class="rm" onclick="this.closest('.vid-row').remove()">✕</button>
-    </div>`).join('');
+  return (videos||[]).map(v=>`<div class="resp-item vid-row" style="align-items:flex-start" data-cover="${esc(v.image_url||'')}">${vidRowInner(v)}</div>`).join('');
 }
 function extractYouTubeId(url){
   try{
@@ -1610,22 +1650,65 @@ function ytThumb(url){
   const id=url?extractYouTubeId(url):null;
   return id?`https://img.youtube.com/vi/${id}/hqdefault.jpg`:'';
 }
-function updateVideoThumb(input){
-  const img=input.closest('.vid-row').querySelector('.v-thumb');
-  const t=ytThumb(input.value);
-  img.src=t; img.style.visibility=t?'visible':'hidden';
+function extractIgShortcode(url){
+  try{
+    const u=new URL(url.trim());
+    if(!u.hostname.includes('instagram.com')) return null;
+    const m=u.pathname.match(/\/(p|reel|tv)\/([\w-]+)/);
+    return m?m[2]:null;
+  }catch(e){return null;}
+}
+// کاور را یا از یوتیوب (همیشه در دسترس) یا با تطبیق لینک اینستاگرام با پست‌های خودِ اکانت پیدا می‌کند
+async function coverFromUrl(url){
+  if(!url) return '';
+  const yid=extractYouTubeId(url);
+  if(yid) return `https://img.youtube.com/vi/${yid}/hqdefault.jpg`;
+  const shortcode=extractIgShortcode(url);
+  if(shortcode){
+    const media=await fetchMedia();
+    const hit=(media||[]).find(m=>extractIgShortcode(m.permalink||'')===shortcode);
+    if(hit) return hit.thumbnail_url||hit.media_url||'';
+  }
+  return '';
+}
+async function updateVideoThumb(input){
+  const row=input.closest('.vid-row');
+  const img=row.querySelector('.v-thumb');
+  const hintEl=row.querySelector('.v-manual-hint');
+  const url=input.value.trim();
+  const t=url?await coverFromUrl(url):'';
+  if(t){
+    img.src=t; img.style.visibility='visible'; row.dataset.cover=t; hintEl.classList.add('hidden');
+  }else if(!row.dataset.cover){ // اگر قبلا کاوری (مثلا دستی) داشتیم، با نبود تطبیق خودکار پاکش نکن
+    img.style.visibility='hidden'; hintEl.classList.toggle('hidden',!url);
+  }
+}
+async function uploadCover(input){
+  const file=input.files[0]; if(!file) return;
+  const row=input.closest('.vid-row');
+  const img=row.querySelector('.v-thumb');
+  const status=row.querySelector('.v-upload-status');
+  status.textContent='در حال آپلود…';
+  try{
+    const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+    const path=`${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const {error}=await sb.storage.from('covers').upload(path,file,{upsert:true,contentType:file.type||'image/jpeg'});
+    if(error) throw error;
+    const {data}=sb.storage.from('covers').getPublicUrl(path);
+    img.src=data.publicUrl; img.style.visibility='visible';
+    row.dataset.cover=data.publicUrl;
+    row.querySelector('.v-manual-hint').classList.add('hidden');
+    status.textContent='✓ آپلود شد';
+    setTimeout(()=>{status.textContent='';},2500);
+  }catch(e){ status.textContent=''; toast('خطا در آپلود: '+(e.message||e)); }
+  input.value='';
 }
 function addFlowVideo(btn){
   const list=btn.closest('.card').querySelector('.vid-list');
   if(list.children.length>=10) return toast('حداکثر ۱۰ ویدیو در هر اسلاید (محدودیت اینستاگرام)');
   const div=document.createElement('div'); div.className='resp-item vid-row';
-  div.style.alignItems='center';
-  div.innerHTML=`<img class="v-thumb" style="width:56px;height:42px;object-fit:cover;border-radius:8px;background:var(--soft);flex:none;visibility:hidden" onerror="this.style.visibility='hidden'">
-    <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-      <input type="text" class="v-url ltr" dir="ltr" placeholder="لینک ویدیوی یوتیوب (youtube.com/watch?v=... یا youtu.be/...)" oninput="updateVideoThumb(this)">
-      <input type="text" class="v-title" dir="auto" maxlength="80" placeholder="عنوان ویدیو">
-    </div>
-    <button type="button" class="rm" onclick="this.closest('.vid-row').remove()">✕</button>`;
+  div.style.alignItems='flex-start';
+  div.innerHTML=vidRowInner({});
   list.appendChild(div);
 }
 function renderFlowNodes(){
@@ -1649,7 +1732,9 @@ function renderFlowNodes(){
     <label class="f">دکمه‌ها — تا ۳۰ عدد؛ در چت ۱۰تا ۱۰تا با دکمه «➕ موارد بیشتر» نمایش داده می‌شود (بدون دکمه = پیام پایانی)</label>
     <div class="opt-list">${rows}</div>
     <button type="button" class="addbtn" style="margin-top:2px" onclick="addFlowOption(this)">+ افزودن دکمه</button>
-    <label class="f">ویدیوهای اسلایدی (اختیاری) — کاور خودکار از خود لینک یوتیوب ساخته می‌شود؛ کاربر با کشیدن انگشت راست/چپ آن‌ها را می‌بیند</label>
+    <label class="f">توضیح بالای کاروسل (اختیاری) — قبل از نشان دادن ویدیوها، این متن جدا فرستاده می‌شود</label>
+    <textarea class="n-vidintro" rows="2" dir="auto" placeholder="مثلا: این ویدیوها رو ببین تا بهترین گزینه رو انتخاب کنی 👇">${esc(n.video_intro||'')}</textarea>
+    <label class="f">ویدیوهای اسلایدی (اختیاری) — لینک یوتیوب یا لینک پست/ریلز اینستاگرام خودتان؛ کاور خودکار پیدا می‌شود، وگرنه با «📤 آپلود» خودتان اضافه کنید. کاربر با کشیدن انگشت راست/چپ می‌بیند</label>
     <div class="vid-list">${videoRows(n.videos)}</div>
     <button type="button" class="addbtn" style="margin-top:2px" onclick="addFlowVideo(this)">+ افزودن ویدیو</button>
     <div class="row" style="margin-top:14px">
@@ -1682,15 +1767,15 @@ async function saveFlowNode(id){
   })).filter(o=>o.label);
   if(options.some(o=>!o.next)) return toast('هر دکمه باید به یک مرحله بعدی وصل باشد');
   const vidRows=[...c.querySelectorAll('.vid-list .vid-row')];
-  const badRow=vidRows.find(r=>{const u=r.querySelector('.v-url').value.trim();return u&&!ytThumb(u);});
-  if(badRow) return toast('یکی از لینک‌های ویدیو معتبر نیست — لینک کامل youtube.com یا youtu.be را وارد کنید');
+  const badRow=vidRows.find(r=>{const u=r.querySelector('.v-url').value.trim();return u&&!r.dataset.cover;});
+  if(badRow) return toast('یکی از ویدیوها کاور ندارد — لینک یوتیوب/اینستاگرام معتبر بدهید یا از دکمه «📤 آپلود» عکس دلخواه اضافه کنید');
   const videos=vidRows.map(r=>({
     video_url:r.querySelector('.v-url').value.trim(),
     title:r.querySelector('.v-title').value.trim(),
-    image_url:ytThumb(r.querySelector('.v-url').value.trim()),
+    image_url:r.dataset.cover||'',
   })).filter(v=>v.video_url&&v.image_url);
   const upd={name:c.querySelector('.n-name').value.trim()||'بدون نام',
-    message:c.querySelector('.n-msg').value, options, videos};
+    message:c.querySelector('.n-msg').value, options, videos, video_intro:c.querySelector('.n-vidintro').value.trim()};
   if(!upd.message.trim()) return toast('متن پیام را بنویسید');
   const {error}=await sb.from('flow_nodes').update(upd).eq('id',id);
   if(!error){const n=flowNodes.find(x=>x.id===id);Object.assign(n,upd);renderFlowEntrySelect();renderFlowNodes();renderFlowDiagram();}
@@ -2239,6 +2324,108 @@ async function doExport(){
   toast('فایل اکسل دانلود شد ✓');
 }
 
+// ---------- پاسخ گروهی کامنت‌ها ----------
+let bulkComments=[];
+async function fillBulkMedia(){
+  const sel=document.getElementById('bulkMedia'); if(!sel) return;
+  const cur=sel.value;
+  const media=await fetchMedia();
+  sel.innerHTML='<option value="">— یک پست را انتخاب کنید —</option>'+(media||[]).map(m=>
+    `<option value="${m.id}" ${cur===m.id?'selected':''}>${esc((m.caption||'(بدون کپشن)').slice(0,60))} · ${(m.timestamp||'').slice(0,10)}</option>`).join('');
+  document.getElementById('bulkFetchBtn').disabled=!sel.value;
+}
+async function fetchBulkComments(){
+  const mediaId=document.getElementById('bulkMedia').value;
+  if(!mediaId) return toast('اول یک پست را انتخاب کنید');
+  const fn=localStorage.getItem('mr_fn'),vt=localStorage.getItem('mr_vt');
+  if(!fn||!vt) return toast('اول در تب «راه‌اندازی» آدرس فانکشن و توکن را وارد کنید');
+  document.getElementById('bulkFetchInfo').textContent='در حال دریافت کامنت‌ها…';
+  document.getElementById('bulkList').innerHTML='';
+  document.getElementById('bulkInstructionCard').classList.add('hidden');
+  try{
+    const r=await fetch(`${fn}?admin=${encodeURIComponent(vt)}&action=comments&media=${encodeURIComponent(mediaId)}`);
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||'خطای نامشخص');
+    bulkComments=(d.data||[]).map(c=>({id:c.id,text:c.text||'',username:c.from?.username||'کاربر',sender_id:c.from?.id||null,timestamp:c.timestamp,draft:'',sent:false}));
+    document.getElementById('bulkFetchInfo').textContent=`${faNum(bulkComments.length)} کامنت پیدا شد`;
+    if(bulkComments.length) document.getElementById('bulkInstructionCard').classList.remove('hidden');
+    renderBulkList();
+  }catch(e){
+    document.getElementById('bulkFetchInfo').innerHTML=`❌ خطا: ${esc(e.message)}`;
+  }
+}
+function renderBulkList(){
+  const host=document.getElementById('bulkList');
+  if(!bulkComments.length){host.innerHTML='<div class="card hint">کامنتی پیدا نشد.</div>';return;}
+  host.innerHTML=bulkComments.map(c=>`
+    <div class="card cmrow ${c.sent?'sent':''}" data-cid="${c.id}">
+      <div class="cmhead"><b dir="auto">${esc(c.username)}</b><span class="hint">${(c.timestamp||'').slice(0,16).replace('T',' ')}</span></div>
+      <div class="cmorig" dir="auto">${esc(c.text)}</div>
+      <label class="f" style="margin-top:0">پاسخ پیشنهادی (قابل ویرایش)</label>
+      <textarea class="cm-draft" rows="2" dir="auto" placeholder="روی «پیشنهاد پاسخ برای همه» بزنید یا خودتان بنویسید…" ${c.sent?'disabled':''}>${esc(c.draft)}</textarea>
+      <div class="cmctl">
+        <button type="button" class="cm-redo" onclick="redraftOne('${c.id}')" ${c.sent?'disabled':''}>🔄 بازنویسی با AI</button>
+        <label><input type="checkbox" class="cm-send" onchange="approveSend(this,'${c.id}')" ${c.sent?'disabled checked':''}> ${c.sent?'ارسال شد ✓':'تایید و ارسال'}</label>
+      </div>
+    </div>`).join('');
+}
+async function draftAllComments(){
+  const instruction=document.getElementById('bulkInstruction').value.trim();
+  const fn=localStorage.getItem('mr_fn'),vt=localStorage.getItem('mr_vt');
+  if(!fn||!vt) return toast('اول در تب «راه‌اندازی» آدرس فانکشن و توکن را وارد کنید');
+  const pending=bulkComments.filter(c=>!c.sent);
+  if(!pending.length) return toast('کامنت آماده‌ای برای پیشنهاد نیست');
+  const batches=[]; for(let i=0;i<pending.length;i+=20) batches.push(pending.slice(i,i+20));
+  const progWrap=document.getElementById('bulkProgWrap'), prog=document.getElementById('bulkProg');
+  progWrap.style.display='block';
+  for(let i=0;i<batches.length;i++){
+    document.getElementById('bulkDraftStatus').textContent=`در حال نوشتن پاسخ — بخش ${faNum(i+1)} از ${faNum(batches.length)}…`;
+    prog.style.width=Math.round((i/batches.length)*100)+'%';
+    try{
+      const d=await callAdmin('draft-replies',{instruction,comments:batches[i].map(c=>({id:c.id,text:c.text}))});
+      (d.drafts||[]).forEach(dr=>{const c=bulkComments.find(x=>x.id===dr.id); if(c) c.draft=dr.reply;});
+      renderBulkList();
+    }catch(e){
+      document.getElementById('bulkDraftStatus').innerHTML=`❌ خطا در بخش ${faNum(i+1)}: ${esc(e.message)}`;
+    }
+    if(i<batches.length-1) await new Promise(r=>setTimeout(r,4000));
+  }
+  progWrap.style.display='none';
+  document.getElementById('bulkDraftStatus').textContent=`✅ پیشنهاد برای ${faNum(pending.length)} کامنت آماده شد — هر کدام را می‌توانید ویرایش کنید`;
+}
+async function redraftOne(id){
+  const c=bulkComments.find(x=>x.id===id); if(!c) return;
+  const instruction=document.getElementById('bulkInstruction').value.trim();
+  const card=document.querySelector(`.cmrow[data-cid="${id}"]`);
+  const btn=card.querySelector('.cm-redo'); btn.disabled=true; btn.textContent='در حال نوشتن…';
+  try{
+    const d=await callAdmin('draft-replies',{instruction,comments:[{id:c.id,text:c.text}]});
+    const dr=(d.drafts||[])[0];
+    if(dr){ c.draft=dr.reply; card.querySelector('.cm-draft').value=dr.reply; }
+  }catch(e){ toast('خطا: '+e.message); }
+  btn.disabled=false; btn.textContent='🔄 بازنویسی با AI';
+}
+async function approveSend(cb,id){
+  if(!cb.checked) return; // فقط تیک زدن ارسال می‌کند؛ برداشتن تیک کاری نمی‌کند چون بعد از ارسال قفل می‌شود
+  const c=bulkComments.find(x=>x.id===id); if(!c) return;
+  const card=document.querySelector(`.cmrow[data-cid="${id}"]`);
+  const text=card.querySelector('.cm-draft').value.trim();
+  if(!text){ cb.checked=false; return toast('اول متن پاسخ را بنویسید'); }
+  cb.disabled=true;
+  try{
+    await callAdmin('send-comment-reply',{comment_id:c.id,text,sender_id:c.sender_id,sender_name:c.username,original:c.text});
+    c.sent=true; c.draft=text;
+    card.classList.add('sent');
+    card.querySelector('.cm-draft').disabled=true;
+    card.querySelector('.cm-redo').disabled=true;
+    cb.closest('label').lastChild.textContent=' ارسال شد ✓';
+    toast('پاسخ ارسال شد ✓');
+  }catch(e){
+    cb.checked=false; cb.disabled=false;
+    toast('خطا در ارسال: '+e.message);
+  }
+}
+
 // ---------- راه‌اندازی ----------
 function saveLocal(){
   localStorage.setItem('mr_fn',document.getElementById('fnUrl').value.trim().replace(/\/$/,''));
@@ -2258,7 +2445,7 @@ async function adminCall(action){
 
 // ---------- رابط ----------
 function showTab(t){
-  for(const v of ['rules','brain','analytics','flow','words','activity','export','analyze','setup']){
+  for(const v of ['rules','brain','analytics','flow','words','activity','export','analyze','bulk','setup']){
     document.getElementById('view-'+v).classList.toggle('hidden',v!==t);
     document.getElementById('tab-'+v).classList.toggle('on',v===t);
   }
@@ -2266,6 +2453,7 @@ function showTab(t){
   if(t==='rules')requestAnimationFrame(drawRuleMaps);
   if(t==='export'){fillExportMedia();}
   if(t==='analyze'){fillAnalysisMedia();}
+  if(t==='bulk'){fillBulkMedia();}
   if(t==='analytics'){fillStatRules();loadAnalytics();rangePreset(24);}
   if(t==='words')renderWords();
   if(t==='flow'){loadFlow();initDragConnect();}
